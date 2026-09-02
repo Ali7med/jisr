@@ -1,0 +1,9 @@
+# مساحات عمل TypeScript فقط — تطبيق Flutter يدير نفسه بـ pub (ADR-0011)
+packages:
+  - 'packages/*'
+  - 'apps/server'
+  - 'apps/web'
+
+# سكربتات البناء المسموح لها بالعمل — كل ما عداها يبقى محجوباً
+onlyBuiltDependencies:
+  - esbuild

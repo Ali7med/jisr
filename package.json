@@ -1,0 +1,20 @@
+{
+  "name": "jisr",
+  "version": "0.0.0",
+  "private": true,
+  "description": "منصة بيت ذكي عربية — جذر مساحات العمل",
+  "packageManager": "pnpm@11.25.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "dev": "pnpm --filter @jisr/server dev",
+    "openapi": "pnpm --filter @jisr/server openapi"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2"
+  }
+}

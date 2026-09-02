@@ -32,7 +32,9 @@
 
 ## P1 — السيرفر: الأساس (2–3 أسابيع)
 
-- [ ] **P1.1** `packages/shared` + `apps/server` (Fastify + TypeScript) + `/health`
+> **P1.1 أُنجز قبل T-V عمداً**: تهيئة مساحة العمل والعقد لا تعتمد على نتائج التحقق من Tuya — بخلاف P1.5 (نقل تكامل Tuya) الذي **يبقى محجوباً** حتى يُقفل معيار قبول T-V.
+
+- [x] **P1.1** `packages/shared` + `apps/server` (Fastify + TypeScript) + `/health` — *2026-09-02*: pnpm workspaces · Node 24 · مخططات TypeBox للعقد الموحّد · OpenAPI مولَّد ومُلتزَم به · حدّ طلبات عام · أخطاء عربية على عقد `ApiError` · CI بمسارات مفلترة
 - [ ] **P1.2** Auth: تسجيل/دخول · JWT + refresh · Argon2
 - [ ] **P1.3** Prisma: users · accounts (أسرار AES-GCM) · devices · state_history
 - [ ] **P1.4** **نقل طبقة التكاملات لـ TypeScript**: `Integration` · `Capability` · `IntegrationRegistry`

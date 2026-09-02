@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# مسارات مفلترة: تغيير في TypeScript لا يبني Flutter والعكس (ADR-0011)
+jobs:
+  typescript:
+    name: TypeScript (server · web · shared)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r typecheck
+      - run: pnpm -r build
+      - run: pnpm -r test
+      - name: عقد OpenAPI محدَّث؟
+        run: |
+          pnpm --filter @jisr/server openapi
+          git diff --exit-code -- packages/shared/openapi.json \
+            || { echo '::error::عقد OpenAPI تغيّر ولم يُلتزَم به — شغّل pnpm openapi والتزم بالملف (ADR-0010)'; exit 1; }
+
+  flutter:
+    name: Flutter (mobile)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test

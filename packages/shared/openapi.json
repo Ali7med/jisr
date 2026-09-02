@@ -1,0 +1,519 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Jisr API",
+    "description": "عقد واجهة جسر — مصدر الحقيقة الوحيد للسيرفر والويب والهاتف (ADR-0010)",
+    "version": "0.0.0"
+  },
+  "components": {
+    "schemas": {
+      "ApiError": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "NOT_FOUND"
+          },
+          "message": {
+            "description": "رسالة عربية تشرح ما العمل",
+            "type": "string"
+          },
+          "details": {
+            "type": "object",
+            "additionalProperties": {}
+          }
+        }
+      },
+      "CapabilityKind": {
+        "anyOf": [
+          {
+            "description": "تشغيل/إطفاء",
+            "type": "string",
+            "enum": [
+              "toggle"
+            ]
+          },
+          {
+            "description": "قيمة عددية ضمن مدى",
+            "type": "string",
+            "enum": [
+              "range"
+            ]
+          },
+          {
+            "description": "اختيار من قائمة محدّدة",
+            "type": "string",
+            "enum": [
+              "mode"
+            ]
+          },
+          {
+            "description": "قراءة نصية لا تُحرَّر",
+            "type": "string",
+            "enum": [
+              "text"
+            ]
+          },
+          {
+            "description": "لم نتعرّف عليه — يُعرض خاماً ولا يُخفى",
+            "type": "string",
+            "enum": [
+              "unknown"
+            ]
+          }
+        ]
+      },
+      "Capability": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "key",
+          "kind",
+          "writable",
+          "readable",
+          "step",
+          "scale",
+          "options"
+        ],
+        "properties": {
+          "key": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/CapabilityKind"
+          },
+          "writable": {
+            "type": "boolean"
+          },
+          "readable": {
+            "default": true,
+            "type": "boolean"
+          },
+          "min": {
+            "type": "number"
+          },
+          "max": {
+            "type": "number"
+          },
+          "step": {
+            "default": 1,
+            "type": "number"
+          },
+          "scale": {
+            "default": 0,
+            "type": "integer"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "options": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "DeviceCategory": {
+        "anyOf": [
+          {
+            "type": "string",
+            "enum": [
+              "light"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
+              "switch"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
+              "socket"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
+              "sensor"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
+              "climate"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
+              "fan"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
+              "cover"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
+              "lock"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
+              "camera"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
+              "energy"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
+              "remote"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
+              "other"
+            ]
+          }
+        ]
+      },
+      "Device": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "integrationId",
+          "accountId",
+          "nativeId",
+          "name",
+          "category",
+          "online",
+          "model",
+          "productName",
+          "isSubDevice",
+          "capabilities"
+        ],
+        "properties": {
+          "id": {
+            "pattern": "^[^:]+:.+$",
+            "type": "string",
+            "example": "tuya:bf1234567890abcdef"
+          },
+          "integrationId": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "accountId": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "nativeId": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "category": {
+            "$ref": "#/components/schemas/DeviceCategory"
+          },
+          "online": {
+            "type": "boolean"
+          },
+          "model": {
+            "default": "",
+            "type": "string"
+          },
+          "productName": {
+            "default": "",
+            "type": "string"
+          },
+          "iconUrl": {
+            "format": "uri",
+            "type": "string"
+          },
+          "room": {
+            "type": "string"
+          },
+          "isSubDevice": {
+            "default": false,
+            "type": "boolean"
+          },
+          "capabilities": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Capability"
+            }
+          }
+        }
+      },
+      "StateValue": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "key",
+          "value"
+        ],
+        "properties": {
+          "key": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "value": {}
+        }
+      },
+      "Command": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "key",
+          "value"
+        ],
+        "properties": {
+          "key": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "value": {}
+        }
+      },
+      "HistoryPoint": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "key",
+          "value",
+          "at"
+        ],
+        "properties": {
+          "key": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "value": {
+            "type": "number"
+          },
+          "at": {
+            "format": "date-time",
+            "type": "string"
+          }
+        }
+      },
+      "CredentialFieldType": {
+        "anyOf": [
+          {
+            "type": "string",
+            "enum": [
+              "text"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
+              "secret"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
+              "choice"
+            ]
+          }
+        ]
+      },
+      "CredentialOption": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "value",
+          "label"
+        ],
+        "properties": {
+          "value": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "hint": {
+            "type": "string"
+          }
+        }
+      },
+      "CredentialField": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "key",
+          "label",
+          "type",
+          "options",
+          "required"
+        ],
+        "properties": {
+          "key": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/CredentialFieldType"
+          },
+          "hint": {
+            "type": "string"
+          },
+          "options": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CredentialOption"
+            }
+          },
+          "defaultValue": {
+            "type": "string"
+          },
+          "required": {
+            "default": true,
+            "type": "boolean"
+          }
+        }
+      },
+      "IntegrationInfo": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "nameAr",
+          "nameEn",
+          "description",
+          "fields",
+          "supportsHistory",
+          "supportsPairing"
+        ],
+        "properties": {
+          "id": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "nameAr": {
+            "type": "string"
+          },
+          "nameEn": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CredentialField"
+            }
+          },
+          "setupUrl": {
+            "format": "uri",
+            "type": "string"
+          },
+          "supportsHistory": {
+            "default": false,
+            "type": "boolean"
+          },
+          "supportsPairing": {
+            "default": false,
+            "type": "boolean"
+          }
+        }
+      },
+      "HealthResponse": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "version",
+          "uptimeSeconds",
+          "at"
+        ],
+        "properties": {
+          "status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "ok"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "degraded"
+                ]
+              }
+            ]
+          },
+          "version": {
+            "type": "string"
+          },
+          "uptimeSeconds": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "at": {
+            "format": "date-time",
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "فحص حياة السيرفر",
+        "tags": [
+          "system"
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "السيرفر الحالي"
+    }
+  ]
+}

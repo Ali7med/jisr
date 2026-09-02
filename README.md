@@ -36,7 +36,8 @@ jisr/
 |---|---|
 | تطبيق الهاتف (يتصل بـ Tuya مباشرة حالياً) | ✅ يعمل · `analyze` نظيف · 12 اختباراً · APK يُبنى |
 | **التحقق مقابل Tuya حقيقي** | 🔴 **الخطوة التالية** — [T-V](docs/03-roadmap.md) |
-| السيرفر · الويب | ⏳ حسب [خارطة الطريق](docs/03-roadmap.md) |
+| السيرفر | 🟢 الأساس قائم: Fastify + عقد OpenAPI + `/health` ([P1.1](docs/03-roadmap.md)) |
+| الويب | ⏳ حسب [خارطة الطريق](docs/03-roadmap.md) |
 
 ## اقرأ أولاً
 
@@ -58,6 +59,25 @@ flutter pub get
 flutter analyze && flutter test
 flutter run
 ```
+
+<div dir="rtl">
+
+## تشغيل السيرفر
+
+مرة واحدة على الجهاز: `corepack enable` (يضع pnpm في المسار).
+
+</div>
+
+```bash
+pnpm install
+pnpm --filter @jisr/server dev
+```
+
+<div dir="rtl">
+
+ثم `curl http://localhost:3000/health`. أوامر أخرى: `pnpm -r typecheck` · `pnpm -r test` · `pnpm openapi` (يعيد توليد عقد `packages/shared/openapi.json` — يُلتزَم به في git).
+
+</div>
 
 <div dir="rtl">
 
