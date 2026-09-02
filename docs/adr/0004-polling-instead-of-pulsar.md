@@ -1,6 +1,6 @@
 # ADR-0004 — Polling بدل Pulsar
 
-**الحالة:** ✅ معتمد
+**الحالة:** ⛔ **مَنسوخ بـ [ADR-0006](0006-central-server-platform.md)** — تحقّق شرط الإبطال الأول: السيرفر يستهلك رسائل Tuya الفورية ويدفعها عبر WebSocket ([ADR-0008](0008-typescript-stack.md))، والهاتف يتحوّل لعميل رفيع بلا polling ([ADR-0009](0009-server-mandatory-thin-client.md) · P3.5). يبقى الملف لتوثيق السياق التاريخي.
 **التاريخ:** 2026-09-01
 
 ## السياق
@@ -28,7 +28,7 @@ Tuya تقدّم **Pulsar Message Service** للدفع الفوري عند تسج
 | البديل | لماذا رُفض |
 |---|---|
 | **Pulsar مباشرة من التطبيق** | غير ممكن تقنياً — server-to-server فقط، ويتطلّب المفاتيح على الجهاز |
-| **Backend + Pulsar + WebSocket** | الحل الصحيح، لكنه يستلزم [المرحلة 7](../05-roadmap.md#المرحلة-7--backend--مؤجّل) |
+| **Backend + Pulsar + WebSocket** | الحل الصحيح، لكنه كان يستلزم بناء سيرفر — وهو ما تحقّق لاحقاً بـ [ADR-0006](0006-central-server-platform.md) ([خارطة الطريق](../03-roadmap.md)) |
 | **تحديث يدوي فقط** | التطبيق يبدو ميتاً؛ المستخدم لا يعرف أن الرقم قديم |
 | **فترة موحّدة قصيرة (5ث لكل شيء)** | يلتهم حصة الـ API: قائمة مفتوحة ساعة = 720 استدعاء |
 
@@ -49,11 +49,11 @@ Tuya تقدّم **Pulsar Message Service** للدفع الفوري عند تسج
 **الخطر الحقيقي: تطبيق منسيّ مفتوحاً في المقدّمة** — ولهذا وُجدت قاعدة الإيقاف في الخلفية.
 
 ### ما يُبطل هذا القرار
-- تنفيذ الـ backend ([المرحلة 7](../05-roadmap.md#المرحلة-7--backend--مؤجّل)) ⇒ Pulsar + WebSocket
+- ✔ تنفيذ الـ backend ⇒ Pulsar + WebSocket — **تحقّق بـ [ADR-0006](0006-central-server-platform.md) وهو ما نَسَخ هذا القرار** ([خارطة الطريق](../03-roadmap.md))
 - تجاوز حصة الـ API ⇒ إطالة الفترات أو الترقية
 - ظهور دفع فوري للعملاء من Tuya
 
 ## مراجع
 - [Does Tuya expose the MQTT service?](https://support.tuya.com/en/help/_detail/K927tp517vggc)
 - [Device Message Subscription](https://developer.tuya.com/en/docs/iot/subscribe?id=Kbwtw7fhhjabw)
-- [02 — المعمارية § التحديث الدوري](../02-architecture.md#٤-إدارة-الحالة)
+- [02 — الهيكلية § تطبيق الهاتف — «لا polling»](../02-architecture.md#٥-تطبيق-الهاتف)

@@ -11,12 +11,17 @@
 | # | القرار | الحالة |
 |---|---|---|
 | [0001](0001-use-cloud-openapi.md) | Cloud OpenAPI بدل App SDK | ✅ معتمد |
-| [0002](0002-direct-connection-with-abstraction.md) | اتصال مباشر خلف واجهة مجرّدة | ✅ معتمد · يُراجَع قبل النشر |
-| [0003](0003-dynamic-ui-from-specifications.md) | واجهة ديناميكية من `specifications` | ✅ معتمد |
-| [0004](0004-polling-instead-of-pulsar.md) | Polling بدل Pulsar | ✅ معتمد |
-| [0005](0005-no-code-generation.md) | بلا توليد كود | ✅ معتمد |
-| [0006](0006-central-server-platform.md) | منصة سيرفر مركزية (يُوسّع 0002) | ✅ معتمد |
-| [0007](0007-dart-server-monorepo.md) | Dart للسيرفر · Monorepo · الويب من Flutter | ✅ معتمد |
+| [0002](0002-direct-connection-with-abstraction.md) | اتصال مباشر خلف واجهة مجرّدة | ⛔ مَنسوخ بـ 0009 |
+| [0003](0003-dynamic-ui-from-specifications.md) | واجهة ديناميكية من القدرات | ✅ معتمد — انتقل للسيرفر |
+| [0004](0004-polling-instead-of-pulsar.md) | Polling بدل Pulsar | ⛔ مَنسوخ بـ 0006 (السيرفر يستهلك الرسائل الفورية ويدفعها عبر WS) |
+| [0005](0005-no-code-generation.md) | بلا توليد كود | ✅ معتمد — للهاتف |
+| [0006](0006-central-server-platform.md) | منصة سيرفر مركزية | ✅ معتمد (شرط «الوضع المباشر» عُدِّل بـ 0009) |
+| [0007](0007-dart-server-monorepo.md) | Dart للسيرفر · الويب من Flutter | ⛔ مَنسوخ بـ 0008 |
+| [0008](0008-typescript-stack.md) | **Fastify + Next.js + هاتف Flutter** | ✅ معتمد |
+| [0009](0009-server-mandatory-thin-client.md) | **السيرفر إلزامي · الهاتف عميل رفيع** | ✅ معتمد |
+| [0010](0010-api-contract-single-source.md) | عقد API كمصدر حقيقة واحد (OpenAPI + اختبارات عقد Dart) | ✅ معتمد |
+| [0011](0011-monorepo-tooling.md) | تثبيت Monorepo · pnpm workspaces · Node 24 LTS | ✅ معتمد |
+| [0012](0012-polyglot-integrations.md) | سياسة التكاملات متعددة اللغات (نقل ← MQTT ← sidecar) | ✅ معتمد |
 
 ## القالب
 

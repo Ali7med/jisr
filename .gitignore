@@ -1,0 +1,31 @@
+# ── ملفات بناء ومولّدة (تحوي مسارات مطلقة — لا تُنقل بين الأجهزة) ──
+build/
+.dart_tool/
+.gradle/
+**/ephemeral/
+**/.cxx/
+node_modules/
+.next/
+dist/
+
+# ── إعدادات محلية للجهاز ──
+apps/mobile/android/local.properties
+apps/mobile/.flutter-plugins-dependencies
+.idea/
+.vscode/
+*.iml
+*.code-workspace
+
+# ── أسرار — لا تدخل المستودع أبداً ──
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# ── مخرجات استكشاف قد تحوي معرّفات أجهزة ──
+docs/reference/devices_dump.json
+
+# ── نظام التشغيل ──
+Thumbs.db
+.DS_Store
