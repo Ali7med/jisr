@@ -31,15 +31,27 @@ class _DevicesScreenState extends ConsumerState<DevicesScreen> {
   Widget build(BuildContext context) {
     final devices = ref.watch(devicesProvider);
     final accounts = ref.watch(accountsProvider).value ?? const <Account>[];
+    final unread = ref.watch(unreadNotificationsProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text(S.devices),
         actions: [
           IconButton(
-            tooltip: S.addAccount,
-            onPressed: () => AppRoutes.toIntegrationPicker(context),
-            icon: const Icon(Icons.add_link),
+            tooltip: S.notifications,
+            onPressed: () => AppRoutes.toNotifications(context),
+            // الشارة تقرأ العدّاد الحيّ: إشعار يصل والتطبيق مفتوح يظهر
+            // فوراً بلا فتح الشاشة.
+            icon: Badge.count(
+              count: unread,
+              isLabelVisible: unread > 0,
+              child: const Icon(Icons.notifications_none),
+            ),
+          ),
+          IconButton(
+            tooltip: S.scenes,
+            onPressed: () => AppRoutes.toScenes(context),
+            icon: const Icon(Icons.auto_awesome_outlined),
           ),
           IconButton(
             tooltip: S.refresh,
@@ -51,6 +63,23 @@ class _DevicesScreenState extends ConsumerState<DevicesScreen> {
             icon: const Icon(Icons.manage_accounts_outlined),
             onSelected: _onMenu,
             itemBuilder: (_) => [
+              // الأتمتة وربط حساب في القائمة لا كأيقونتين: شريط بخمس
+              // أيقونات يزاحم عنوان الشاشة على هاتف ضيّق.
+              const PopupMenuItem<Object>(
+                value: _automations,
+                child: ListTile(
+                  leading: Icon(Icons.bolt_outlined),
+                  title: Text(S.automations),
+                ),
+              ),
+              const PopupMenuItem<Object>(
+                value: _addAccount,
+                child: ListTile(
+                  leading: Icon(Icons.add_link),
+                  title: Text(S.addAccount),
+                ),
+              ),
+              const PopupMenuDivider(),
               for (final account in accounts)
                 PopupMenuItem<Object>(
                   value: account,
@@ -201,6 +230,10 @@ class _DevicesScreenState extends ConsumerState<DevicesScreen> {
 
   Future<void> _onMenu(Object selection) async {
     if (selection == _signOut) return _confirmSignOut();
+    if (selection == _automations) return AppRoutes.toAutomations(context);
+    if (selection == _addAccount) {
+      return AppRoutes.toIntegrationPicker(context);
+    }
     if (selection is Account) return _openAccount(selection);
   }
 
@@ -239,5 +272,7 @@ class _DevicesScreenState extends ConsumerState<DevicesScreen> {
   }
 }
 
-/// قيمة حارسة تميّز «تسجيل الخروج» عن عناصر الحسابات في نفس القائمة.
+/// قيم حارسة تميّز أوامر القائمة عن عناصر الحسابات فيها.
 const Object _signOut = 'sign-out';
+const Object _automations = 'automations';
+const Object _addAccount = 'add-account';

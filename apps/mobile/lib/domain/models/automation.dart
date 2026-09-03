@@ -188,9 +188,7 @@ class Automation {
     createdAt:
         DateTime.tryParse(json['createdAt'] as String? ?? '')?.toLocal() ??
         DateTime.now(),
-    lastRunAt: DateTime.tryParse(
-      json['lastRunAt'] as String? ?? '',
-    )?.toLocal(),
+    lastRunAt: DateTime.tryParse(json['lastRunAt'] as String? ?? '')?.toLocal(),
   );
 
   @override

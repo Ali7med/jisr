@@ -6,11 +6,14 @@ import 'package:jisr/domain/models/account.dart';
 import 'package:jisr/domain/models/capability.dart';
 import 'package:jisr/domain/models/integration_info.dart';
 import 'package:jisr/ui/auth/widgets/sign_in_screen.dart';
+import 'package:jisr/ui/automations/widgets/automations_screen.dart';
 import 'package:jisr/ui/core/l10n/app_strings.dart';
 import 'package:jisr/ui/core/themes/app_theme.dart';
 import 'package:jisr/ui/device_detail/widgets/device_detail_screen.dart';
 import 'package:jisr/ui/devices/widgets/devices_screen.dart';
 import 'package:jisr/ui/logs/widgets/logs_chart_screen.dart';
+import 'package:jisr/ui/notifications/widgets/notifications_screen.dart';
+import 'package:jisr/ui/scenes/widgets/scenes_screen.dart';
 import 'package:jisr/ui/setup/widgets/account_form_screen.dart';
 import 'package:jisr/ui/setup/widgets/integration_picker_screen.dart';
 
@@ -60,6 +63,18 @@ abstract final class AppRoutes {
           HistoryChartScreen(deviceId: deviceId, capability: capability),
     ),
   );
+
+  static Future<void> toScenes(BuildContext context) => Navigator.of(
+    context,
+  ).push(MaterialPageRoute<void>(builder: (_) => const ScenesScreen()));
+
+  static Future<void> toNotifications(BuildContext context) => Navigator.of(
+    context,
+  ).push(MaterialPageRoute<void>(builder: (_) => const NotificationsScreen()));
+
+  static Future<void> toAutomations(BuildContext context) => Navigator.of(
+    context,
+  ).push(MaterialPageRoute<void>(builder: (_) => const AutomationsScreen()));
 
   /// قائمة الشركات لربط حساب جديد.
   static Future<void> toIntegrationPicker(BuildContext context) =>
