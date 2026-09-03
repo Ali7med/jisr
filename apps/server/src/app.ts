@@ -197,7 +197,7 @@ export async function buildApp(
 
   await app.register(websocket);
 
-  await app.register(healthRoutes, { config });
+  await app.register(healthRoutes, { config, repositories: deps.repositories });
   await app.register(authRoutes, { auth });
   await app.register(accountRoutes, { accounts });
   await app.register(deviceRoutes, { devices });

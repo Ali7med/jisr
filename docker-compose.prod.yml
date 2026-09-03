@@ -1,0 +1,87 @@
+# نشر جسر على VPS واحد — ADR-0014 (هدف توفّر 99.5%).
+#
+# لا نسخة تجريبية منفصلة، وهذا **موقف واعٍ** موثّق في الهيكلية § 8:
+# مشروع فردي، والتجربة تكون على فرع محلي ثم على الإنتاج بنشر قابل للتراجع.
+#
+#   cp deploy/env.prod.example .env.prod   ← ثم املأه (لا يدخل git أبداً)
+#   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - jisr-db:/var/lib/postgresql/data
+    # لا منفذ منشور: القاعدة تُرى من شبكة التركيبة فقط
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER}']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  server:
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOST: 0.0.0.0
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      APP_VERSION: ${APP_VERSION:-0.0.0}
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      JWT_SECRET: ${JWT_SECRET}
+      SECRETS_KEY_VERSION: ${SECRETS_KEY_VERSION:-1}
+      SECRETS_KEY_V1: ${SECRETS_KEY_V1}
+      # مفاتيح إضافية أثناء التدوير — القراءة تقبل كل نسخة موجودة
+      SECRETS_KEY_V2: ${SECRETS_KEY_V2:-}
+      HISTORY_RETENTION_DAYS: ${HISTORY_RETENTION_DAYS:-90}
+      STATE_POLL_INTERVAL_SECONDS: ${STATE_POLL_INTERVAL_SECONDS:-0}
+    # الهجرات تُطبَّق عند الإقلاع: نسخة جديدة لا تعمل على مخطّط قديم
+    command: sh -c "node_modules/.bin/prisma migrate deploy && node dist/main.js"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - server
+    ports:
+      - '80:80'
+      - '443:443'
+    environment:
+      JISR_DOMAIN: ${JISR_DOMAIN}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+  backup:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGHOST: postgres
+      PGDATABASE: ${POSTGRES_DB}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+    volumes:
+      - ./deploy/backup.sh:/usr/local/bin/backup.sh:ro
+      - jisr-backups:/backups
+    entrypoint: ['sh', '/usr/local/bin/backup.sh']
+
+volumes:
+  jisr-db:
+  jisr-backups:
+  caddy-data:
+  caddy-config:

@@ -26,6 +26,9 @@ export function createMemoryRepositories(): MemoryRepositories {
   const history = new Map<string, HistoryRow[]>();
 
   return {
+    async ping() {
+      /* الذاكرة جاهزة دائماً */
+    },
     users: {
       async findByEmail(email) {
         const normalized = email.trim().toLowerCase();

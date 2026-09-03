@@ -48,6 +48,7 @@ jisr/
 | **[03 — خارطة الطريق](docs/03-roadmap.md)** | ما التالي وبأي معيار قبول |
 | [القرارات المعمارية](docs/adr/) | لماذا اتُّخذ كل قرار — ١٤ قراراً، منها ٣ مَنسوخة بأخرى |
 | [مرجع Tuya](docs/reference/tuya.md) | التوقيع · المسارات · نقاط البيانات · أكواد الخطأ |
+| **[دليل التشغيل](docs/runbook.md)** | النشر · النسخ الاحتياطية · الأعطال الشائعة · تدوير المفتاح · تمرين الاستعادة |
 
 ## تشغيل التطبيق
 
@@ -79,6 +80,8 @@ pnpm --filter @jisr/server dev
 <div dir="rtl">
 
 املأ `JWT_SECRET` و`SECRETS_KEY_V1` في `.env` (`openssl rand -base64 32` لكلٍّ منهما) — السيرفر يرفض الإقلاع بدونهما. ثم `curl http://localhost:3000/health`. أوامر أخرى: `pnpm -r typecheck` · `pnpm -r test` · `pnpm openapi` (يعيد توليد عقد `packages/shared/openapi.json` — يُلتزَم به في git).
+
+للنشر على خادم: انسخ `deploy/env.prod.example` إلى `.env.prod` واملأه، ثم `docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build` — التفاصيل والتراجع والأعطال في [دليل التشغيل](docs/runbook.md).
 
 </div>
 

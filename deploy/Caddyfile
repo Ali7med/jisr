@@ -1,0 +1,22 @@
+# Caddy يتولّى TLS تلقائياً (Let's Encrypt) — لا شهادات تُدار يدوياً.
+
+{$JISR_DOMAIN} {
+	encode gzip
+
+	# ترقية WebSocket تمرّ كما هي — القناة اللحظية تعتمد عليها
+	reverse_proxy server:3000 {
+		header_up X-Real-IP {remote_host}
+	}
+
+	# فحص الحياة لا يستحق سطر سجلّ كل ثلاثين ثانية
+	log {
+		output stdout
+		format console
+	}
+}
+
+# فحص الجاهزية على منفذ داخلي بلا TLS — للمراقبة داخل الشبكة
+:8080 {
+	respond /healthz "ok" 200
+	reverse_proxy /health* server:3000
+}

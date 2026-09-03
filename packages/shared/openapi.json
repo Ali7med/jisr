@@ -1055,6 +1055,36 @@
         }
       }
     },
+    "/health/ready": {
+      "get": {
+        "summary": "جاهزية السيرفر لاستقبال الطلبات (يفحص قاعدة البيانات)",
+        "tags": [
+          "system"
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/auth/register": {
       "post": {
         "summary": "إنشاء حساب جديد",
