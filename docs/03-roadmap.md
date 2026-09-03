@@ -39,8 +39,8 @@
 - [x] **P1.1** `packages/shared` + `apps/server` (Fastify + TypeScript) + `/health` — *2026-09-02*: pnpm workspaces · Node 24 · مخططات TypeBox للعقد الموحّد · OpenAPI مولَّد ومُلتزَم به · حدّ طلبات عام · أخطاء عربية على عقد `ApiError` · CI بمسارات مفلترة
 - [x] **P1.2** Auth: تسجيل/دخول · JWT + refresh · Argon2 — *2026-09-02*: Argon2id بمعاملات OWASP · تدوير إلزامي لرمز التجديد (المستعمل يُبطَل فوراً) · الرموز مُخزَّنة مجزّأة · ردّ موحّد لبريد مجهول وكلمة مرور خاطئة · سقف 10/دقيقة على `/auth`
 - [x] **P1.3** Prisma: users · accounts (أسرار AES-GCM) · devices · state_history — *2026-09-02*: Prisma 7 بمحوّل Postgres · هجرة أولى مولّدة · AES-256-GCM بمفاتيح مرقّمة تسمح بالتدوير · فهرس `(device_id, recorded_at)` ([ADR-0013](adr/0013-postgresql-prisma.md)). **الهجرة لم تُطبَّق على قاعدة حيّة بعد**
-- [ ] **P1.4** **نقل طبقة التكاملات لـ TypeScript**: `Integration` · `Capability` · `IntegrationRegistry`
-- [ ] **P1.5** **نقل تكامل Tuya**: signer (باختباراته) · client · mapper — مقابل `devices_dump.json` من V.2
+- [x] **P1.4** **نقل طبقة التكاملات لـ TypeScript**: `Integration` · `IntegrationRegistry` · `IntegrationError` بتصنيف يترجَم لرمز HTTP واحد — *2026-09-03*: السجلّ يرمي رسالة عربية لتكامل مجهول ولاعتمادات ناقصة (بأسماء الحقول المعروضة) بدل `null` صامت
+- [~] **P1.5** **نقل تكامل Tuya**: signer · client · mapper · التكامل — *2026-09-03*: منقول بالكامل مع **اختباراته الذهبية نفسها** (تواقيع محسوبة خارجياً بـ openssl، تُثبت أن النقل لم يغيّر بايتاً)؛ العميل على `fetch` بلا اعتمادية جديدة، وتوكن واحد للطلبات المتوازية، وإعادة محاولة واحدة عند انتهاء التوكن. **معيار القبول يبقى مفتوحاً حتى T-V**: لم يُقابَل بعدُ بـ `devices_dump.json` من جهاز حقيقي
 - [ ] **P1.6** REST: `/accounts` · `/devices` · `/devices/{id}` · `/commands` · `/history`
 
 **القبول:** `curl` بتوكن JWT يجلب الأجهزة وينفّذ أمراً · اختبارات التوقيع خضراء بـ TypeScript.
