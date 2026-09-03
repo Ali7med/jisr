@@ -1,5 +1,10 @@
 import type { PrismaClient } from '@prisma/client';
 import type { AccountStatus, Capability } from '@jisr/shared';
+import {
+  createAutomationRepository,
+  createNotificationRepository,
+  createSceneRepository,
+} from './automation-repositories.ts';
 import type {
   AccountRecord,
   Bytes,
@@ -94,6 +99,9 @@ export function createPrismaRepositories(prisma: PrismaClient): Repositories {
     users,
     refreshTokens,
     accounts: createAccountRepository(prisma),
+    automations: createAutomationRepository(prisma),
+    scenes: createSceneRepository(prisma),
+    notifications: createNotificationRepository(prisma),
     devices: createDeviceRepository(prisma),
     history: createHistoryRepository(prisma),
   };

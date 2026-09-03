@@ -960,6 +960,106 @@
           }
         }
       },
+      "NotifySeverity": {
+        "anyOf": [
+          {
+            "type": "string",
+            "enum": [
+              "info"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
+              "warning"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
+              "critical"
+            ]
+          }
+        ]
+      },
+      "Notification": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "body",
+          "severity",
+          "read",
+          "createdAt"
+        ],
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/NotifySeverity"
+          },
+          "read": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        }
+      },
+      "NotificationEvent": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "type",
+          "notification",
+          "at"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "notification"
+            ]
+          },
+          "notification": {
+            "$ref": "#/components/schemas/Notification"
+          },
+          "at": {
+            "format": "date-time",
+            "type": "string"
+          }
+        }
+      },
+      "NotificationList": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "notifications",
+          "unread"
+        ],
+        "properties": {
+          "notifications": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Notification"
+            }
+          },
+          "unread": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        }
+      },
       "RealtimeEvent": {
         "anyOf": [
           {
@@ -970,6 +1070,9 @@
           },
           {
             "$ref": "#/components/schemas/DeviceEvent"
+          },
+          {
+            "$ref": "#/components/schemas/NotificationEvent"
           }
         ]
       },
@@ -989,6 +1092,576 @@
           },
           "token": {
             "minLength": 1,
+            "type": "string"
+          }
+        }
+      },
+      "CompareOp": {
+        "anyOf": [
+          {
+            "type": "string",
+            "enum": [
+              "eq"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
+              "ne"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
+              "gt"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
+              "gte"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
+              "lt"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
+              "lte"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
+              "changed"
+            ]
+          }
+        ]
+      },
+      "StateTrigger": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "deviceId",
+          "key",
+          "op"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "state"
+            ]
+          },
+          "deviceId": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "key": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "op": {
+            "$ref": "#/components/schemas/CompareOp"
+          },
+          "value": {}
+        }
+      },
+      "ScheduleTrigger": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "at",
+          "days",
+          "timezone"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "schedule"
+            ]
+          },
+          "at": {
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+            "type": "string",
+            "example": "07:30"
+          },
+          "days": {
+            "type": "array",
+            "items": {
+              "minimum": 0,
+              "maximum": 6,
+              "type": "integer"
+            }
+          },
+          "timezone": {
+            "minLength": 1,
+            "type": "string",
+            "example": "Asia/Baghdad"
+          }
+        }
+      },
+      "AutomationTrigger": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/StateTrigger"
+          },
+          {
+            "$ref": "#/components/schemas/ScheduleTrigger"
+          }
+        ]
+      },
+      "TimeCondition": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "from",
+          "to",
+          "timezone"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "time_between"
+            ]
+          },
+          "from": {
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+            "type": "string"
+          },
+          "to": {
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+            "type": "string"
+          },
+          "timezone": {
+            "minLength": 1,
+            "type": "string",
+            "example": "Asia/Baghdad"
+          }
+        }
+      },
+      "StateCondition": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "deviceId",
+          "key",
+          "op"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "device_state"
+            ]
+          },
+          "deviceId": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "key": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "op": {
+            "$ref": "#/components/schemas/CompareOp"
+          },
+          "value": {}
+        }
+      },
+      "AutomationCondition": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/TimeCondition"
+          },
+          {
+            "$ref": "#/components/schemas/StateCondition"
+          }
+        ]
+      },
+      "CommandAction": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "deviceId",
+          "key",
+          "value"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "command"
+            ]
+          },
+          "deviceId": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "key": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "value": {}
+        }
+      },
+      "SceneAction": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "sceneId"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "scene"
+            ]
+          },
+          "sceneId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        }
+      },
+      "NotifyAction": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "title",
+          "body",
+          "severity"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "notify"
+            ]
+          },
+          "title": {
+            "minLength": 1,
+            "maxLength": 80,
+            "type": "string"
+          },
+          "body": {
+            "maxLength": 300,
+            "type": "string"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/NotifySeverity"
+          }
+        }
+      },
+      "AutomationAction": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/CommandAction"
+          },
+          {
+            "$ref": "#/components/schemas/SceneAction"
+          },
+          {
+            "$ref": "#/components/schemas/NotifyAction"
+          }
+        ]
+      },
+      "Automation": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "enabled",
+          "trigger",
+          "conditions",
+          "actions",
+          "createdAt"
+        ],
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "minLength": 1,
+            "maxLength": 80,
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "trigger": {
+            "$ref": "#/components/schemas/AutomationTrigger"
+          },
+          "conditions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AutomationCondition"
+            }
+          },
+          "actions": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AutomationAction"
+            }
+          },
+          "lastRunAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        }
+      },
+      "AutomationInput": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "enabled",
+          "trigger",
+          "conditions",
+          "actions"
+        ],
+        "properties": {
+          "name": {
+            "minLength": 1,
+            "maxLength": 80,
+            "type": "string"
+          },
+          "enabled": {
+            "default": true,
+            "type": "boolean"
+          },
+          "trigger": {
+            "$ref": "#/components/schemas/AutomationTrigger"
+          },
+          "conditions": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AutomationCondition"
+            }
+          },
+          "actions": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AutomationAction"
+            }
+          }
+        }
+      },
+      "AutomationList": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "automations"
+        ],
+        "properties": {
+          "automations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Automation"
+            }
+          }
+        }
+      },
+      "AutomationRun": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "succeeded",
+          "detail",
+          "ranAt"
+        ],
+        "properties": {
+          "succeeded": {
+            "type": "boolean"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "ranAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        }
+      },
+      "AutomationRunList": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "runs"
+        ],
+        "properties": {
+          "runs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AutomationRun"
+            }
+          }
+        }
+      },
+      "SceneStep": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "deviceId",
+          "key",
+          "value"
+        ],
+        "properties": {
+          "deviceId": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "key": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "value": {}
+        }
+      },
+      "Scene": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "icon",
+          "steps",
+          "createdAt"
+        ],
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "minLength": 1,
+            "maxLength": 60,
+            "type": "string"
+          },
+          "icon": {
+            "type": "string"
+          },
+          "steps": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SceneStep"
+            }
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        }
+      },
+      "SceneInput": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "icon",
+          "steps"
+        ],
+        "properties": {
+          "name": {
+            "minLength": 1,
+            "maxLength": 60,
+            "type": "string"
+          },
+          "icon": {
+            "default": "",
+            "type": "string"
+          },
+          "steps": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SceneStep"
+            }
+          }
+        }
+      },
+      "SceneList": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "scenes"
+        ],
+        "properties": {
+          "scenes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Scene"
+            }
+          }
+        }
+      },
+      "SceneRunResult": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "sceneId",
+          "succeeded",
+          "failed",
+          "failures",
+          "at"
+        ],
+        "properties": {
+          "sceneId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "succeeded": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "failed": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "failures": {
+            "type": "array",
+            "items": {
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "deviceId",
+                "message"
+              ],
+              "properties": {
+                "deviceId": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "at": {
+            "format": "date-time",
             "type": "string"
           }
         }
@@ -1860,6 +2533,520 @@
             }
           },
           "502": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/automations": {
+      "get": {
+        "summary": "أتمتات المستخدم",
+        "tags": [
+          "automation"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutomationList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "إنشاء أتمتة",
+        "tags": [
+          "automation"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AutomationInput"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Automation"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/automations/{id}": {
+      "put": {
+        "summary": "تعديل أتمتة",
+        "tags": [
+          "automation"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AutomationInput"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Automation"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "حذف أتمتة",
+        "tags": [
+          "automation"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Default Response"
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/automations/{id}/runs": {
+      "get": {
+        "summary": "سجلّ تنفيذ أتمتة",
+        "tags": [
+          "automation"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutomationRunList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/scenes": {
+      "get": {
+        "summary": "مشاهد المستخدم",
+        "tags": [
+          "automation"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SceneList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "إنشاء مشهد",
+        "tags": [
+          "automation"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SceneInput"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Scene"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/scenes/{id}": {
+      "delete": {
+        "summary": "حذف مشهد",
+        "tags": [
+          "automation"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Default Response"
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/scenes/{id}/run": {
+      "post": {
+        "summary": "تشغيل مشهد",
+        "tags": [
+          "automation"
+        ],
+        "description": "النجاح الجزئي ممكن: جهاز غير متصل لا يُلغي بقية الخطوات.",
+        "parameters": [
+          {
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SceneRunResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/notifications": {
+      "get": {
+        "summary": "إشعارات المستخدم",
+        "tags": [
+          "automation"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/notifications/read": {
+      "post": {
+        "summary": "تعليم كل الإشعارات مقروءة",
+        "tags": [
+          "automation"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Default Response"
+          },
+          "401": {
             "description": "Default Response",
             "content": {
               "application/json": {

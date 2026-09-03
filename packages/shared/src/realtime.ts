@@ -1,5 +1,6 @@
 import { Type, type Static } from '@sinclair/typebox';
 import { Device, StateValue } from './device.js';
+import { NotificationEvent } from './notification.js';
 
 /**
  * أحداث القناة اللحظية (WebSocket).
@@ -42,7 +43,12 @@ export const DeviceEvent = Type.Object(
 export type DeviceEvent = Static<typeof DeviceEvent>;
 
 export const RealtimeEvent = Type.Union(
-  [Type.Ref(HelloEvent), Type.Ref(StateEvent), Type.Ref(DeviceEvent)],
+  [
+    Type.Ref(HelloEvent),
+    Type.Ref(StateEvent),
+    Type.Ref(DeviceEvent),
+    Type.Ref(NotificationEvent),
+  ],
   { $id: 'RealtimeEvent' },
 );
 export type RealtimeEvent = Static<typeof RealtimeEvent>;

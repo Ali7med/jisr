@@ -8,6 +8,14 @@ import {
   AccountList,
   AccountStatus,
   ApiError,
+  Automation,
+  AutomationAction,
+  AutomationCondition,
+  AutomationInput,
+  AutomationList,
+  AutomationRun,
+  AutomationRunList,
+  AutomationTrigger,
   AuthSession,
   AuthTokens,
   LoginRequest,
@@ -16,7 +24,9 @@ import {
   UserProfile,
   Capability,
   CapabilityKind,
+  CommandAction,
   CommandRequest,
+  CompareOp,
   CommandResult,
   CreateAccountRequest,
   Credentials,
@@ -36,11 +46,26 @@ import {
   HistorySource,
   IntegrationInfo,
   IntegrationList,
+  Notification,
+  NotificationEvent,
+  NotificationList,
+  NotifyAction,
+  NotifySeverity,
   RealtimeAuthMessage,
   RealtimeEvent,
+  Scene,
+  SceneAction,
+  SceneInput,
+  SceneList,
+  SceneRunResult,
+  SceneStep,
+  ScheduleTrigger,
+  StateCondition,
   StateEvent,
+  StateTrigger,
   StateValue,
   SyncResult,
+  TimeCondition,
   UpdateAccountRequest,
 } from '@jisr/shared';
 import type { Config } from './config.ts';
@@ -55,7 +80,16 @@ import { createIntegrationOpener } from './integrations/opener.ts';
 import { createIntegrationRegistry, type IntegrationRegistry } from './integrations/registry.ts';
 import { createStateBus, type StateBus } from './state/bus.ts';
 import { createStatePipeline, type StatePipeline } from './state/pipeline.ts';
+import { createAutomationEngine, type AutomationEngine } from './automation/engine.ts';
+import { createNotifier } from './automation/notifier.ts';
+import { createScenesService } from './automation/scenes.ts';
+import {
+  createAutomationsService,
+  createNotificationsService,
+} from './automation/service.ts';
 import { accountRoutes } from './routes/accounts.ts';
+import { automationRoutes } from './routes/automations.ts';
+import { sceneRoutes } from './routes/scenes.ts';
 import { authRoutes } from './routes/auth.ts';
 import { deviceRoutes } from './routes/devices.ts';
 import { healthRoutes } from './routes/health.ts';
@@ -69,6 +103,7 @@ declare module 'fastify' {
     statePipeline: StatePipeline;
     integrationOpener: IntegrationOpener;
     accountsService: AccountsService;
+    automationEngine: AutomationEngine;
   }
 }
 
@@ -112,8 +147,33 @@ const SHARED_SCHEMAS = [
   HelloEvent,
   StateEvent,
   DeviceEvent,
+  NotifySeverity,
+  Notification,
+  NotificationEvent,
+  NotificationList,
   RealtimeEvent,
   RealtimeAuthMessage,
+  CompareOp,
+  StateTrigger,
+  ScheduleTrigger,
+  AutomationTrigger,
+  TimeCondition,
+  StateCondition,
+  AutomationCondition,
+  CommandAction,
+  SceneAction,
+  NotifyAction,
+  AutomationAction,
+  Automation,
+  AutomationInput,
+  AutomationList,
+  AutomationRun,
+  AutomationRunList,
+  SceneStep,
+  Scene,
+  SceneInput,
+  SceneList,
+  SceneRunResult,
   HealthResponse,
 ];
 
@@ -192,8 +252,35 @@ export async function buildApp(
   const devices = createDevicesService({ repositories: deps.repositories, registry, opener });
 
   const bus = createStateBus();
+  const notifier = createNotifier(deps.repositories, bus);
+  const scenes = createScenesService({ repositories: deps.repositories, devices });
+  const automations = createAutomationsService(deps.repositories);
+  const notifications = createNotificationsService(deps.repositories);
+
+  const engine = createAutomationEngine({
+    repositories: deps.repositories,
+    devices,
+    scenes,
+    notifier,
+    log: app.log,
+  });
+
   app.decorate('bus', bus);
-  app.decorate('statePipeline', createStatePipeline({ repositories: deps.repositories, bus }));
+  app.decorate(
+    'statePipeline',
+    createStatePipeline({
+      repositories: deps.repositories,
+      bus,
+      // كل قراءة متغيّرة تمرّ بالمحرّك فوراً — لا طابور بين الحدث والإجراء
+      // (ADR-0015). خطأ في أتمتة لا يُسقط حفظ القراءة ولا نشرها.
+      onChange: (update) => {
+        void engine
+          .onStateChange(update)
+          .catch((error: unknown) => app.log.error({ err: error }, 'فشل تقييم أتمتة'));
+      },
+    }),
+  );
+  app.decorate('automationEngine', engine);
   app.decorate('integrationOpener', opener);
   app.decorate('accountsService', accounts);
 
@@ -204,6 +291,8 @@ export async function buildApp(
   await app.register(accountRoutes, { accounts });
   await app.register(deviceRoutes, { devices });
   await app.register(realtimeRoutes, { bus });
+  await app.register(automationRoutes, { automations });
+  await app.register(sceneRoutes, { scenes, notifications });
 
   return app;
 }

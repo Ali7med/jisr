@@ -35,6 +35,7 @@ const guard = createAccountGuard({
 poller.start();
 retention.start();
 guard.start();
+app.automationEngine.start();
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   process.on(signal, () => {
@@ -42,6 +43,7 @@ for (const signal of ['SIGINT', 'SIGTERM'] as const) {
     poller.stop();
     retention.stop();
     guard.stop();
+    app.automationEngine.stop();
     void app
       .close()
       .then(() => prisma.$disconnect())

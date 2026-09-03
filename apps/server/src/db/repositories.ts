@@ -1,4 +1,12 @@
-import type { AccountStatus, Capability } from '@jisr/shared';
+import type {
+  AccountStatus,
+  AutomationAction,
+  AutomationCondition,
+  AutomationTrigger,
+  Capability,
+  NotifySeverity,
+  SceneStep,
+} from '@jisr/shared';
 
 /** Prisma يمثّل حقول `Bytes` بـ Uint8Array مدعوم بـ ArrayBuffer تحديداً. */
 export type Bytes = Uint8Array<ArrayBuffer>;
@@ -49,6 +57,9 @@ export interface Repositories {
   readonly users: UserRepository;
   readonly refreshTokens: RefreshTokenRepository;
   readonly accounts: AccountRepository;
+  readonly automations: AutomationRepository;
+  readonly scenes: SceneRepository;
+  readonly notifications: NotificationRepository;
   readonly devices: DeviceRepository;
   readonly history: StateHistoryRepository;
 }
@@ -187,4 +198,84 @@ export interface StateHistoryRepository {
   record(rows: readonly HistoryWrite[]): Promise<void>;
   /** سياسة الاستبقاء من اليوم الأول — ADR-0013. يُرجع عدد الصفوف المحذوفة. */
   prune(olderThan: Date): Promise<number>;
+}
+
+// ── الأتمتة والمشاهد والإشعارات (ADR-0015) ──────────────────────────────────
+
+export interface AutomationRecord {
+  readonly id: string;
+  readonly userId: string;
+  readonly name: string;
+  readonly enabled: boolean;
+  readonly trigger: AutomationTrigger;
+  readonly conditions: AutomationCondition[];
+  readonly actions: AutomationAction[];
+  readonly lastRunAt: Date | null;
+  readonly createdAt: Date;
+}
+
+export interface AutomationInputRecord {
+  readonly name: string;
+  readonly enabled: boolean;
+  readonly trigger: AutomationTrigger;
+  readonly conditions: AutomationCondition[];
+  readonly actions: AutomationAction[];
+}
+
+export interface AutomationRunRecord {
+  readonly succeeded: boolean;
+  readonly detail: string;
+  readonly ranAt: Date;
+}
+
+export interface AutomationRepository {
+  listByUser(userId: string): Promise<AutomationRecord[]>;
+  /** كل المفعّلة عبر كل المستخدمين — يقرؤها المحرّك. */
+  listEnabled(): Promise<AutomationRecord[]>;
+  findOwned(userId: string, id: string): Promise<AutomationRecord | null>;
+  create(userId: string, input: AutomationInputRecord): Promise<AutomationRecord>;
+  update(id: string, input: AutomationInputRecord): Promise<AutomationRecord>;
+  remove(id: string): Promise<void>;
+  markRun(id: string, ranAt: Date): Promise<void>;
+  recordRun(id: string, run: { succeeded: boolean; detail: string; ranAt: Date }): Promise<void>;
+  listRuns(id: string, limit: number): Promise<AutomationRunRecord[]>;
+}
+
+export interface SceneRecord {
+  readonly id: string;
+  readonly userId: string;
+  readonly name: string;
+  readonly icon: string;
+  readonly steps: SceneStep[];
+  readonly createdAt: Date;
+}
+
+export interface SceneRepository {
+  listByUser(userId: string): Promise<SceneRecord[]>;
+  findOwned(userId: string, id: string): Promise<SceneRecord | null>;
+  /** يقرؤه المحرّك حين يكون المشهد إجراءً في أتمتة. */
+  findById(id: string): Promise<SceneRecord | null>;
+  create(userId: string, input: { name: string; icon: string; steps: SceneStep[] }): Promise<SceneRecord>;
+  remove(id: string): Promise<void>;
+}
+
+export interface NotificationRecord {
+  readonly id: string;
+  readonly userId: string;
+  readonly title: string;
+  readonly body: string;
+  readonly severity: NotifySeverity;
+  readonly readAt: Date | null;
+  readonly createdAt: Date;
+}
+
+export interface NotificationRepository {
+  listByUser(userId: string, limit: number): Promise<NotificationRecord[]>;
+  create(input: {
+    userId: string;
+    title: string;
+    body: string;
+    severity: NotifySeverity;
+  }): Promise<NotificationRecord>;
+  markAllRead(userId: string, at: Date): Promise<void>;
 }

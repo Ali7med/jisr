@@ -32,6 +32,12 @@ export interface StatePipeline {
 export interface StatePipelineOptions {
   readonly repositories: Repositories;
   readonly bus: StateBus;
+  /** يُخطر محرّك الأتمتة بما تغيّر — يُحقن كي يبقى الأنبوب مستقلاً عنه. */
+  readonly onChange?: (update: {
+    userId: string;
+    deviceId: string;
+    values: readonly StateValue[];
+  }) => void;
   readonly now?: () => Date;
 }
 
@@ -80,6 +86,12 @@ export function createStatePipeline(options: StatePipelineOptions): StatePipelin
         deviceId: update.publicDeviceId,
         values: changed,
         at: at.toISOString(),
+      });
+
+      options.onChange?.({
+        userId: update.userId,
+        deviceId: update.publicDeviceId,
+        values: changed,
       });
 
       return changed;

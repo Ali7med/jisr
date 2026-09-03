@@ -7,9 +7,12 @@
  */
 export * from './account.js';
 export * from './auth.js';
+export * from './automation.js';
 export * from './capability.js';
 export * from './device.js';
 export * from './integration.js';
+export * from './notification.js';
+export * from './scene.js';
 export * from './realtime.js';
 export * from './errors.js';
 export * from './health.js';

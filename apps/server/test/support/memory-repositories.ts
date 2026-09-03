@@ -7,6 +7,7 @@ import type {
   RefreshTokenRecord,
   UserRecord,
 } from '../../src/db/repositories.ts';
+import { createAutomationMemory } from './automation-memory.ts';
 
 /** يسمح للاختبارات بزرع سجلّ قراءات بلا Postgres. */
 export interface MemoryRepositories extends Repositories {
@@ -24,6 +25,7 @@ export function createMemoryRepositories(): MemoryRepositories {
   const accounts = new Map<string, AccountRecord>();
   const devices = new Map<string, DeviceRecord>();
   const history = new Map<string, HistoryRow[]>();
+  const automation = createAutomationMemory();
 
   return {
     async ping() {
@@ -215,6 +217,10 @@ export function createMemoryRepositories(): MemoryRepositories {
         return removed;
       },
     },
+
+    automations: automation.automationRepository,
+    scenes: automation.sceneRepository,
+    notifications: automation.notificationRepository,
 
     seedHistory(deviceId, rows) {
       history.set(deviceId, [...rows]);

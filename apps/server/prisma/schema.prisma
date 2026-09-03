@@ -22,6 +22,9 @@ model User {
 
   accounts      Account[]
   refreshTokens RefreshToken[]
+  automations   Automation[]
+  scenes        Scene[]
+  notifications Notification[]
 
   @@map("users")
 }
@@ -125,4 +128,85 @@ model StateHistory {
 
   @@index([deviceId, recordedAt])
   @@map("state_history")
+}
+
+// ── الأتمتة ─────────────────────────────────────────────────────────────────
+// ADR-0015: المحرّك داخل العملية، والحالة الدائمة هنا لا في الذاكرة —
+// إعادة تشغيل السيرفر لا تُضيّع أتمتة ولا تُكرّر تنفيذاً.
+
+/// أتمتة واحدة: مُشغِّل + شروط + إجراءات. الأشكال تُخزَّن Json لأن العقد
+/// (TypeBox) هو من يتحقّق منها، وتغييرها لا يستحق هجرة في كل مرة.
+model Automation {
+  id      String  @id @default(uuid()) @db.Uuid
+  userId  String  @map("user_id") @db.Uuid
+  name    String
+  enabled Boolean @default(true)
+
+  trigger    Json
+  conditions Json @default("[]")
+  actions    Json
+
+  /// آخر تنفيذ — عليه يعمل منع التكرار في مُشغِّل الوقت.
+  lastRunAt DateTime? @map("last_run_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  user User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  runs AutomationRun[]
+
+  @@index([userId])
+  @@index([enabled])
+  @@map("automations")
+}
+
+/// سجلّ التنفيذ — يجعل «لماذا لم تعمل أتمتتي؟» سؤالاً له جواب.
+model AutomationRun {
+  id           BigInt   @id @default(autoincrement())
+  automationId String   @map("automation_id") @db.Uuid
+  succeeded    Boolean
+  /// سبب عربي جاهز للعرض عند الفشل، أو ملخّص ما نُفِّذ عند النجاح.
+  detail       String
+  ranAt        DateTime @default(now()) @map("ran_at")
+
+  automation Automation @relation(fields: [automationId], references: [id], onDelete: Cascade)
+
+  @@index([automationId, ranAt])
+  @@map("automation_runs")
+}
+
+/// مشهد: مجموعة أوامر تُنفَّذ بنقرة — **عابر للشركات** بطبيعته، لأن
+/// الأوامر تُوجَّه بمعرّف العقد المركّب لا بمعرّف شركة.
+model Scene {
+  id     String @id @default(uuid()) @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  name   String
+  icon   String @default("")
+  steps  Json
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@map("scenes")
+}
+
+/// إشعار داخل التطبيق. يصل لحظياً عبر القناة، ويبقى في القاعدة كي يراه
+/// من كان هاتفه مغلقاً — دفع FCM يُبنى فوقه في P5.3 لا بدلاً منه.
+model Notification {
+  id       String    @id @default(uuid()) @db.Uuid
+  userId   String    @map("user_id") @db.Uuid
+  title    String
+  body     String
+  severity String    @default("info")
+  readAt   DateTime? @map("read_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("notifications")
 }
