@@ -90,6 +90,8 @@ export interface AccountPatch {
 
 export interface AccountRepository {
   listByUser(userId: string): Promise<AccountRecord[]>;
+  /** كل الحسابات العاملة عبر كل المستخدمين — للمهامّ الخلفية. */
+  listActive(): Promise<AccountRecord[]>;
   /** يقيّد بالمالك دائماً: حساب مستخدم آخر «غير موجود» لا «ممنوع». */
   findOwned(userId: string, accountId: string): Promise<AccountRecord | null>;
   create(input: AccountCreateInput): Promise<AccountRecord>;
@@ -167,6 +169,20 @@ export interface HistoryQueryInput {
   readonly limit: number;
 }
 
+/** قراءة واحدة تُكتب في السلسلة الزمنية. */
+export interface HistoryWrite {
+  readonly deviceId: string;
+  readonly key: string;
+  /** العدد للرسوم البيانية. */
+  readonly value: number | null;
+  /** ما ليس عدداً — يُحفظ خاماً ولا يُهمل (القاعدة الحاكمة 3). */
+  readonly rawValue: unknown;
+  readonly recordedAt: Date;
+}
+
 export interface StateHistoryRepository {
   list(query: HistoryQueryInput): Promise<HistoryRow[]>;
+  record(rows: readonly HistoryWrite[]): Promise<void>;
+  /** سياسة الاستبقاء من اليوم الأول — ADR-0013. يُرجع عدد الصفوف المحذوفة. */
+  prune(olderThan: Date): Promise<number>;
 }

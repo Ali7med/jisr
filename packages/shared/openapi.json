@@ -884,6 +884,115 @@
           }
         }
       },
+      "HelloEvent": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "type",
+          "at"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "hello"
+            ]
+          },
+          "at": {
+            "format": "date-time",
+            "type": "string"
+          }
+        }
+      },
+      "StateEvent": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "type",
+          "deviceId",
+          "values",
+          "at"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "state"
+            ]
+          },
+          "deviceId": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StateValue"
+            }
+          },
+          "at": {
+            "format": "date-time",
+            "type": "string"
+          }
+        }
+      },
+      "DeviceEvent": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "type",
+          "device",
+          "at"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "device"
+            ]
+          },
+          "device": {
+            "$ref": "#/components/schemas/Device"
+          },
+          "at": {
+            "format": "date-time",
+            "type": "string"
+          }
+        }
+      },
+      "RealtimeEvent": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/HelloEvent"
+          },
+          {
+            "$ref": "#/components/schemas/StateEvent"
+          },
+          {
+            "$ref": "#/components/schemas/DeviceEvent"
+          }
+        ]
+      },
+      "RealtimeAuthMessage": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "type",
+          "token"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "auth"
+            ]
+          },
+          "token": {
+            "minLength": 1,
+            "type": "string"
+          }
+        }
+      },
       "HealthResponse": {
         "additionalProperties": false,
         "type": "object",

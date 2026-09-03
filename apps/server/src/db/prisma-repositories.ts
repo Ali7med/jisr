@@ -140,6 +140,11 @@ function createAccountRepository(prisma: PrismaClient): AccountRepository {
       return rows.map(toAccount);
     },
 
+    async listActive() {
+      const rows = await prisma.account.findMany({ where: { status: 'active' } });
+      return rows.map(toAccount);
+    },
+
     async findOwned(userId, accountId) {
       const row = await prisma.account.findFirst({ where: { id: accountId, userId } });
       return row ? toAccount(row) : null;
@@ -291,6 +296,26 @@ function createHistoryRepository(prisma: PrismaClient): StateHistoryRepository {
         value: row.value ?? 0,
         recordedAt: row.recordedAt,
       }));
+    },
+
+    async record(rows) {
+      if (rows.length === 0) return;
+      await prisma.stateHistory.createMany({
+        data: rows.map((row) => ({
+          deviceId: row.deviceId,
+          key: row.key,
+          value: row.value,
+          rawValue: row.rawValue === null || row.rawValue === undefined ? undefined : row.rawValue,
+          recordedAt: row.recordedAt,
+        })),
+      });
+    },
+
+    async prune(olderThan) {
+      const result = await prisma.stateHistory.deleteMany({
+        where: { recordedAt: { lt: olderThan } },
+      });
+      return result.count;
     },
   };
 }
