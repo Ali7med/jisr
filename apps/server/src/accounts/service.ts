@@ -1,5 +1,6 @@
 import type {
   Account,
+  AccountStatus,
   CreateAccountRequest,
   IntegrationInfo,
   SyncResult,
@@ -27,6 +28,13 @@ export interface AccountsService {
   update(userId: string, accountId: string, patch: UpdateAccountRequest): Promise<Account>;
   remove(userId: string, accountId: string): Promise<void>;
   sync(userId: string, accountId: string): Promise<SyncResult>;
+  /**
+   * فحص دوري لكل الحسابات العاملة — «حارس الصلاحية» (الدراسة § 7).
+   *
+   * يُرجع عدد الحسابات التي تعطّلت. لا يرمي: حساب واحد يفشل لا يوقف
+   * فحص البقية، والحالة تُعلَّم داخل المزامنة فيراها المستخدم في واجهته.
+   */
+  checkAll(): Promise<{ checked: number; failed: number }>;
 }
 
 /** Prisma يطلب Uint8Array مدعوماً بـ ArrayBuffer؛ Buffer عقدة أعمّ منه. */
@@ -35,6 +43,23 @@ function toBytes(value: Uint8Array): Bytes {
 }
 
 const NOT_FOUND = 'لم نعثر على هذا الحساب — قد يكون حُذف. حدّث القائمة.';
+
+/**
+ * أي أعطال تستحق تعليم الحساب؟ **الفشل العابر لا يُعلَّم**: انقطاع شبكة
+ * أو تجاوز حصّة يزول وحده، وتعليمه يُغرق المستخدم بتنبيهات كاذبة.
+ */
+function failureStatus(error: unknown): AccountStatus | null {
+  if (!(error instanceof IntegrationError)) return null;
+  switch (error.kind) {
+    case 'credentials':
+    case 'auth':
+      return 'invalid_credentials';
+    case 'expired':
+      return 'expired';
+    default:
+      return null;
+  }
+}
 
 export function createAccountsService(options: AccountsServiceOptions): AccountsService {
   const { repositories, registry, opener, cipher } = options;
@@ -124,11 +149,12 @@ export function createAccountsService(options: AccountsServiceOptions): Accounts
         at: at.toISOString(),
       };
     } catch (error) {
-      // اعتمادات مرفوضة تُعلَّم على الحساب كي يظهر التنبيه في الواجهة
-      // بدل أن يكتشف المستخدم العطل حين لا يستجيب جهازه.
-      if (error instanceof IntegrationError && (error.kind === 'credentials' || error.kind === 'auth')) {
+      // عطل يحتاج تدخّل المستخدم يُعلَّم على الحساب كي يظهر التنبيه في
+      // الواجهة، بدل أن يكتشف العطل حين لا يستجيب جهازه.
+      const failed = failureStatus(error);
+      if (failed) {
         await repositories.accounts.update(account.id, {
-          status: 'invalid_credentials',
+          status: failed,
           lastCheckedAt: now(),
         });
       }
@@ -198,6 +224,21 @@ export function createAccountsService(options: AccountsServiceOptions): Accounts
 
     async sync(userId, accountId) {
       return syncAccount(await owned(userId, accountId));
+    },
+
+    async checkAll() {
+      const accounts = await repositories.accounts.listActive();
+      let failed = 0;
+
+      for (const account of accounts) {
+        try {
+          await syncAccount(account);
+        } catch {
+          // الحالة عُلِّمت داخل المزامنة إن كانت تستحق؛ هنا نُحصي فقط.
+          failed += 1;
+        }
+      }
+      return { checked: accounts.length, failed };
     },
   };
 }

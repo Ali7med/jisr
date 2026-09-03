@@ -181,3 +181,46 @@ describe('دورة حياة الحساب', () => {
     expect(response.json()).toMatchObject({ code: 'NOT_FOUND' });
   });
 });
+
+describe('حارس الصلاحية (الدراسة § 7)', () => {
+  it('انتهاء اشتراك المشروع يُعلّم الحساب expired ويردّ 402', async () => {
+    const created = await createAccount();
+    const accountId = (created.json() as { id: string }).id;
+
+    harness.fake.failWith = new IntegrationError(
+      'انتهت فترة التجربة المجانية للمشروع — جدّدها من لوحة الشركة.',
+      { integrationId: 'fake', kind: 'expired' },
+    );
+
+    const sync = await harness.app.inject({
+      method: 'POST',
+      url: `/accounts/${accountId}/sync`,
+      headers: auth,
+    });
+    expect(sync.statusCode).toBe(402);
+    expect(sync.json()).toMatchObject({ code: 'INTEGRATION_EXPIRED' });
+
+    harness.fake.failWith = null;
+    const list = await harness.app.inject({ method: 'GET', url: '/accounts', headers: auth });
+    expect((list.json() as { accounts: { status: string }[] }).accounts[0]?.status).toBe('expired');
+  });
+
+  it('عطل عابر (حصّة أو شبكة) لا يُعلّم الحساب — التنبيه الكاذب أسوأ من لا تنبيه', async () => {
+    const created = await createAccount();
+    const accountId = (created.json() as { id: string }).id;
+
+    harness.fake.failWith = new IntegrationError('تجاوزت الحصّة لهذا الشهر.', {
+      integrationId: 'fake',
+      kind: 'quota',
+    });
+    await harness.app.inject({
+      method: 'POST',
+      url: `/accounts/${accountId}/sync`,
+      headers: auth,
+    });
+
+    harness.fake.failWith = null;
+    const list = await harness.app.inject({ method: 'GET', url: '/accounts', headers: auth });
+    expect((list.json() as { accounts: { status: string }[] }).accounts[0]?.status).toBe('active');
+  });
+});

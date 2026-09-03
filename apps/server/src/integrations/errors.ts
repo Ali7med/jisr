@@ -13,8 +13,14 @@ export type IntegrationErrorKind =
   | 'auth'
   /** صلاحية مرفوضة أو إعداد ناقص في لوحة الشركة. */
   | 'permission'
-  /** تجاوز حصة أو حدّ معدّل. */
+  /** تجاوز حصة أو حدّ معدّل — يزول مع الوقت. */
   | 'quota'
+  /**
+   * انتهى اشتراك المشروع لدى الشركة — **لا يزول مع الوقت** ويحتاج تدخّل
+   * المستخدم. تمييزه عن `quota` هو ما يجعل «حارس الصلاحية» ممكناً
+   * (الدراسة § 7: انتهاء تجربة Tuya أخطر مخاطرة تشغيلية).
+   */
+  | 'expired'
   /** الجهاز غير متصل أو لا يدعم الأمر. */
   | 'device'
   /** مشكلة شبكة. */
@@ -74,6 +80,8 @@ export function statusForKind(kind: IntegrationErrorKind): number {
       return 403;
     case 'quota':
       return 429;
+    case 'expired':
+      return 402;
     case 'device':
       return 409;
     case 'network':

@@ -4,6 +4,7 @@ import { createPrismaClient } from './db/client.ts';
 import { createPrismaRepositories } from './db/prisma-repositories.ts';
 import { createStatePoller } from './state/poller.ts';
 import { createRetentionJob } from './state/retention.ts';
+import { createAccountGuard } from './accounts/guard.ts';
 
 const config = loadConfig();
 const prisma = createPrismaClient(config.databaseUrl);
@@ -24,14 +25,23 @@ const retention = createRetentionJob({
   intervalMs: 6 * 60 * 60 * 1000,
   log: app.log,
 });
+/** يومياً: يكشف انتهاء اشتراك الشركة قبل أن يكتشفه المستخدم بتوقّف أجهزته. */
+const guard = createAccountGuard({
+  accounts: app.accountsService,
+  intervalMs: 24 * 60 * 60 * 1000,
+  log: app.log,
+});
+
 poller.start();
 retention.start();
+guard.start();
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   process.on(signal, () => {
     app.log.info(`${signal} — إيقاف السيرفر بهدوء`);
     poller.stop();
     retention.stop();
+    guard.stop();
     void app
       .close()
       .then(() => prisma.$disconnect())
