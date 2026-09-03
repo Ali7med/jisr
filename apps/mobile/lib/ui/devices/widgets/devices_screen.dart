@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:jisr/config/dependencies.dart';
-import 'package:jisr/data/integrations/integration_registry.dart';
 import 'package:jisr/domain/models/account.dart';
 import 'package:jisr/domain/models/device.dart';
 import 'package:jisr/routing/app_router.dart';
 import 'package:jisr/ui/core/l10n/app_strings.dart';
+import 'package:jisr/ui/core/widgets/connection_banner.dart';
 import 'package:jisr/ui/core/widgets/status_views.dart';
 import 'package:jisr/ui/devices/view_models/devices_view_model.dart';
 import 'package:jisr/ui/devices/widgets/device_card.dart';
@@ -31,7 +31,6 @@ class _DevicesScreenState extends ConsumerState<DevicesScreen> {
   Widget build(BuildContext context) {
     final devices = ref.watch(devicesProvider);
     final accounts = ref.watch(accountsProvider).value ?? const <Account>[];
-    final failures = ref.watch(deviceRepositoryProvider).lastErrors;
 
     return Scaffold(
       appBar: AppBar(
@@ -47,25 +46,35 @@ class _DevicesScreenState extends ConsumerState<DevicesScreen> {
             onPressed: () => ref.read(devicesProvider.notifier).refresh(),
             icon: const Icon(Icons.refresh),
           ),
-          PopupMenuButton<Account>(
+          PopupMenuButton<Object>(
             tooltip: S.accounts,
             icon: const Icon(Icons.manage_accounts_outlined),
-            onSelected: _openAccount,
+            onSelected: _onMenu,
             itemBuilder: (_) => [
               for (final account in accounts)
-                PopupMenuItem(
+                PopupMenuItem<Object>(
                   value: account,
                   child: ListTile(
-                    leading: const Icon(Icons.hub_outlined),
-                    title: Text(account.label),
-                    subtitle: Text(
-                      IntegrationRegistry.infoFor(
-                            account.integrationId,
-                          )?.nameAr ??
-                          account.integrationId,
+                    leading: Icon(
+                      account.needsAttention
+                          ? Icons.error_outline
+                          : Icons.hub_outlined,
+                      color: account.needsAttention
+                          ? Theme.of(context).colorScheme.error
+                          : null,
                     ),
+                    title: Text(account.label),
+                    subtitle: Text(account.statusMessage),
                   ),
                 ),
+              const PopupMenuDivider(),
+              const PopupMenuItem<Object>(
+                value: _signOut,
+                child: ListTile(
+                  leading: Icon(Icons.logout),
+                  title: Text(S.signOut),
+                ),
+              ),
             ],
           ),
         ],
@@ -100,7 +109,8 @@ class _DevicesScreenState extends ConsumerState<DevicesScreen> {
           message: '$error',
           onRetry: () => ref.read(devicesProvider.notifier).refresh(),
         ),
-        data: (all) {
+        data: (view) {
+          final all = view.devices;
           if (all.isEmpty) {
             return const EmptyStateView(
               icon: Icons.devices_other,
@@ -123,15 +133,15 @@ class _DevicesScreenState extends ConsumerState<DevicesScreen> {
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
               physics: const AlwaysScrollableScrollPhysics(),
               children: [
-                // تكامل واحد معطّل لا يُخفي أجهزة البقية، لكن لا يُبتلع صامتاً.
-                if (failures.isNotEmpty)
+                ConnectionBanner(staleSince: view.staleSince),
+                // حساب رفضته الشركة يظهر تنبيهاً بدل أن يكتشف المستخدم
+                // العطل حين لا يستجيب جهازه.
+                for (final account in accounts.where((a) => a.needsAttention))
                   NoticeBanner(
-                    message:
-                        '${S.someIntegrationsFailed}: '
-                        '${failures.values.first.message}',
-                    icon: Icons.cloud_off,
-                    margin: const EdgeInsets.only(bottom: 12),
+                    message: '${account.label}: ${account.statusMessage}',
+                    margin: const EdgeInsets.only(top: 12),
                   ),
+                const SizedBox(height: 12),
                 ..._buildGroups(context, filtered),
               ],
             ),
@@ -189,10 +199,45 @@ class _DevicesScreenState extends ConsumerState<DevicesScreen> {
     ];
   }
 
+  Future<void> _onMenu(Object selection) async {
+    if (selection == _signOut) return _confirmSignOut();
+    if (selection is Account) return _openAccount(selection);
+  }
+
   Future<void> _openAccount(Account account) async {
-    final info = IntegrationRegistry.infoFor(account.integrationId);
+    final integrations = await ref.read(integrationsProvider.future);
+    final info = integrations
+        .where((candidate) => candidate.id == account.integrationId)
+        .firstOrNull;
     if (info == null || !mounted) return;
 
     await AppRoutes.toAccountForm(context, info: info, existing: account);
   }
+
+  Future<void> _confirmSignOut() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text(S.signOut),
+        content: const Text(S.signOutConfirm),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text(S.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text(S.signOut),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed ?? false) {
+      await ref.read(sessionProvider.notifier).logout();
+    }
+  }
 }
+
+/// قيمة حارسة تميّز «تسجيل الخروج» عن عناصر الحسابات في نفس القائمة.
+const Object _signOut = 'sign-out';

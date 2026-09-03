@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:jisr/data/integrations/integration_registry.dart';
-import 'package:jisr/domain/integration_exception.dart';
+import 'package:jisr/data/api/api_exception.dart';
 import 'package:jisr/domain/models/capability.dart';
 import 'package:jisr/domain/models/device_snapshot.dart';
 import 'package:jisr/routing/app_router.dart';
 import 'package:jisr/ui/core/l10n/app_strings.dart';
+import 'package:jisr/ui/core/widgets/connection_banner.dart';
 import 'package:jisr/ui/core/widgets/status_views.dart';
 import 'package:jisr/ui/device_detail/view_models/device_detail_view_model.dart';
 import 'package:jisr/ui/device_detail/widgets/capability_control_tile.dart';
@@ -37,7 +37,7 @@ class DeviceDetailScreen extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => ErrorStateView(
           icon: Icons.error_outline,
-          message: error is IntegrationException ? error.message : '$error',
+          message: error is ApiException ? error.message : '$error',
           onRetry: () =>
               ref.read(deviceDetailProvider(deviceId).notifier).refresh(),
         ),
@@ -60,7 +60,7 @@ class DeviceDetailScreen extends ConsumerWidget {
       await ref
           .read(deviceDetailProvider(deviceId).notifier)
           .sendCommand(key, value);
-    } on IntegrationException catch (error) {
+    } on ApiException catch (error) {
       messenger.showSnackBar(
         SnackBar(content: Text('${S.commandFailed}: ${error.message}')),
       );
@@ -87,12 +87,12 @@ class _DetailBody extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.only(bottom: 32),
       children: [
+        ConnectionBanner(staleSince: snapshot.staleSince),
         if (!device.online)
           const NoticeBanner(
             message: S.deviceOfflineNotice,
             icon: Icons.cloud_off,
           ),
-
         SectionHeader(
           title: S.controls,
           icon: Icons.tune,
@@ -105,11 +105,11 @@ class _DetailBody extends StatelessWidget {
             CapabilityControlTile(
               capability: capability,
               value: snapshot.values[capability.key],
-              // جهاز غير متصل لن يستجيب: نعطّل التحكم بدل إيهام المستخدم.
-              enabled: device.online,
+              // جهاز غير متصل لن يستجيب، ولقطة من الكاش لا تُتحكَّم منها
+              // ([ADR-0009] · P3.6): نعطّل بدل إيهام المستخدم.
+              enabled: device.online && !snapshot.isStale,
               onChanged: (value) => onCommand(capability.key, value),
             ),
-
         const SizedBox(height: 8),
         SectionHeader(
           title: S.readings,
@@ -125,7 +125,6 @@ class _DetailBody extends StatelessWidget {
               value: snapshot.values[capability.key],
               onTap: () => _openHistory(context, capability),
             ),
-
         const SizedBox(height: 16),
         _DeviceMeta(snapshot: snapshot),
       ],
@@ -171,10 +170,11 @@ class _DeviceMeta extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final device = snapshot.device;
-    final integration = IntegrationRegistry.infoFor(device.integrationId);
 
     final rows = <(String, String)>[
-      ('الشركة', integration?.nameAr ?? device.integrationId),
+      // معرّف التكامل يظهر كما هو: الاسم العربي للشركة يعيش في السيرفر،
+      // وسحبه هنا يحمّل شاشة تفاصيل طلب شبكة لا تستحقّه.
+      ('الشركة', device.integrationId),
       ('المعرّف', device.nativeId),
       ('الفئة', device.category.labelAr),
       if (device.productName.isNotEmpty) ('المنتج', device.productName),

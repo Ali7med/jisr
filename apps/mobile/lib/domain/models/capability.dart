@@ -70,6 +70,43 @@ class Capability {
   /// بيانات إضافية خاصة بالتكامل — للتشخيص فقط، الواجهة لا تقرأها.
   final Map<String, Object?> raw;
 
+  factory Capability.fromJson(Map<String, dynamic> json) => Capability(
+    key: json['key'] as String? ?? '',
+    kind: kindFromWire(json['kind'] as String?),
+    writable: json['writable'] as bool? ?? false,
+    readable: json['readable'] as bool? ?? true,
+    min: json['min'] as num?,
+    max: json['max'] as num?,
+    step: json['step'] as num? ?? 1,
+    scale: (json['scale'] as num?)?.toInt() ?? 0,
+    unit: json['unit'] as String?,
+    options: [
+      for (final option in (json['options'] as List? ?? const [])) '$option',
+    ],
+  );
+
+  Map<String, dynamic> toJson() => {
+    'key': key,
+    'kind': kind.name,
+    'writable': writable,
+    'readable': readable,
+    'min': min,
+    'max': max,
+    'step': step,
+    'scale': scale,
+    'unit': unit,
+    'options': options,
+  };
+
+  /// نوع لا نعرفه يبقى [CapabilityKind.unknown] ويُعرض خاماً ولا يُخفى.
+  static CapabilityKind kindFromWire(String? wire) => switch (wire) {
+    'toggle' => CapabilityKind.toggle,
+    'range' => CapabilityKind.range,
+    'mode' => CapabilityKind.mode,
+    'text' => CapabilityKind.text,
+    _ => CapabilityKind.unknown,
+  };
+
   // ── تحويل القيم ────────────────────────────────────────────────────────────
 
   /// القيمة الخام → المعروضة. مثال: 235 مع `scale: 1` ⇒ 23.5

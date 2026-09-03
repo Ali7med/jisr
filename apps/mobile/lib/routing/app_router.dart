@@ -5,6 +5,7 @@ import 'package:jisr/config/dependencies.dart';
 import 'package:jisr/domain/models/account.dart';
 import 'package:jisr/domain/models/capability.dart';
 import 'package:jisr/domain/models/integration_info.dart';
+import 'package:jisr/ui/auth/widgets/sign_in_screen.dart';
 import 'package:jisr/ui/core/l10n/app_strings.dart';
 import 'package:jisr/ui/core/themes/app_theme.dart';
 import 'package:jisr/ui/device_detail/widgets/device_detail_screen.dart';
@@ -80,47 +81,24 @@ abstract final class AppRoutes {
   );
 }
 
-/// يوجّه إلى ربط حساب أو قائمة الأجهزة، ويتتبّع دورة حياة التطبيق ليوقف
-/// التحديث الدوري عند الانتقال للخلفية.
-class RootGate extends ConsumerStatefulWidget {
+/// يوجّه إلى الدخول أو إلى قائمة الأجهزة.
+///
+/// لا مراقبة لدورة حياة التطبيق بعد P3.5: لم يعد هناك استقصاء دوري
+/// نوقفه في الخلفية — التحديثات تصل عبر القناة اللحظية.
+class RootGate extends ConsumerWidget {
   const RootGate({super.key});
 
   @override
-  ConsumerState<RootGate> createState() => _RootGateState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final session = ref.watch(sessionProvider);
 
-class _RootGateState extends ConsumerState<RootGate>
-    with WidgetsBindingObserver {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    ref.read(appActiveProvider.notifier).state =
-        state == AppLifecycleState.resumed;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final accounts = ref.watch(accountsProvider);
-
-    return accounts.when(
+    return session.when(
       loading: () =>
           const Scaffold(body: Center(child: CircularProgressIndicator())),
-      // فشل قراءة المخزن الآمن: نبدأ من الإعداد بدل شاشة خطأ مسدودة.
-      error: (_, _) => const IntegrationPickerScreen(isFirstRun: true),
-      data: (list) => list.isEmpty
-          ? const IntegrationPickerScreen(isFirstRun: true)
-          : const DevicesScreen(),
+      // فشل قراءة المخزن الآمن: نبدأ من الدخول بدل شاشة خطأ مسدودة.
+      error: (_, _) => const SignInScreen(),
+      data: (value) =>
+          value == null ? const SignInScreen() : const DevicesScreen(),
     );
   }
 }

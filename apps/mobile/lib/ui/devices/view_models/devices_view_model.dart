@@ -1,55 +1,55 @@
-import 'dart:async';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:jisr/config/app_config.dart';
 import 'package:jisr/config/dependencies.dart';
-import 'package:jisr/domain/models/device.dart';
+import 'package:jisr/data/api/realtime_client.dart';
+import 'package:jisr/data/repositories/device_repository.dart';
 
-final devicesProvider = AsyncNotifierProvider<DevicesViewModel, List<Device>>(
+final devicesProvider = AsyncNotifierProvider<DevicesViewModel, DevicesView>(
   DevicesViewModel.new,
 );
 
-/// قائمة الأجهزة من كل التكاملات، مع تحديث دوري هادئ.
-class DevicesViewModel extends AsyncNotifier<List<Device>> {
-  Timer? _timer;
-
+/// قائمة الأجهزة من السيرفر.
+///
+/// **لا استقصاء دوري** بعد P3.5: التحديثات تصل عبر القناة اللحظية،
+/// والاستقصاء كان يستهلك بطارية وحصّة بلا داعٍ.
+class DevicesViewModel extends AsyncNotifier<DevicesView> {
   @override
-  Future<List<Device>> build() async {
-    final repository = ref.watch(deviceRepositoryProvider);
-    if (!repository.hasIntegrations) return const [];
-
-    ref.onDispose(() => _timer?.cancel());
-    _schedulePolling();
-
-    return repository.fetchDevices();
-  }
-
-  /// تحديث يعرض مؤشر تحميل — للسحب اليدوي.
-  Future<void> refresh() async {
-    final repository = ref.read(deviceRepositoryProvider);
-    if (!repository.hasIntegrations) return;
-
-    state = const AsyncLoading<List<Device>>().copyWithPrevious(state);
-    state = await AsyncValue.guard(repository.fetchDevices);
-  }
-
-  /// تحديث صامت — لا يومض، ولا يمسح البيانات عند فشل مؤقت.
-  Future<void> _refreshSilently() async {
-    final repository = ref.read(deviceRepositoryProvider);
-    if (!repository.hasIntegrations) return;
-
-    try {
-      state = AsyncData(await repository.fetchDevices());
-    } catch (_) {
-      // انقطاع عابر: نُبقي آخر قائمة معروضة ونعيد المحاولة في الدورة التالية.
+  Future<DevicesView> build() async {
+    if (ref.watch(sessionProvider).value == null) {
+      return const DevicesView([]);
     }
+
+    // تغيّر حالة الاتصال إلى «موصول» يعني أننا عدنا بعد انقطاع: نعيد
+    // الجلب مرة كي نلحق بما فاتنا وهي مقطوعة.
+    ref.listen(connectionStatusProvider, (previous, next) {
+      final wasDown = previous?.value != RealtimeStatus.connected;
+      if (wasDown && next.value == RealtimeStatus.connected) {
+        Future<void>.microtask(refreshSilently);
+      }
+    });
+
+    // تغيّر حالة جهاز (اتصاله مثلاً) يصل لحظياً؛ القائمة تعرض الاتصال
+    // فقط، فتحديثها الخفيف يكفي.
+    ref.listen(stateUpdatesProvider, (_, _) {});
+
+    return ref.read(deviceRepositoryProvider).fetchDevices();
   }
 
-  void _schedulePolling() {
-    _timer?.cancel();
-    _timer = Timer.periodic(AppTuning.listPollInterval, (_) {
-      if (!ref.read(appActiveProvider)) return;
-      unawaited(_refreshSilently());
-    });
+  /// تحديث يعرض مؤشّر تحميل — للسحب اليدوي.
+  Future<void> refresh() async {
+    state = const AsyncLoading<DevicesView>().copyWithPrevious(state);
+    state = await AsyncValue.guard(
+      ref.read(deviceRepositoryProvider).fetchDevices,
+    );
+  }
+
+  /// تحديث صامت — لا يومض ولا يمسح ما هو معروض عند فشل عابر.
+  Future<void> refreshSilently() async {
+    try {
+      state = AsyncData(
+        await ref.read(deviceRepositoryProvider).fetchDevices(),
+      );
+    } catch (_) {
+      // انقطاع عابر: نُبقي آخر قائمة معروضة.
+    }
   }
 }

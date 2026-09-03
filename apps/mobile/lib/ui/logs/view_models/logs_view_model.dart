@@ -6,18 +6,10 @@ import 'package:jisr/domain/models/device_state.dart';
 /// وهي شرط عمل `family` في Riverpod.
 typedef HistoryQuery = ({String deviceId, String key, Duration window});
 
-/// سجلّ قراءة واحدة عبر نافذة زمنية.
-///
-/// تكامل لا يدعم السجلّ يُرجع قائمة فارغة، والشاشة تعرض «لا بيانات».
+/// سجلّ قراءة واحدة عبر نافذة زمنية — يجمعه السيرفر من قاعدته أو من
+/// الشركة، والتطبيق لا يعرف الفرق ولا يحتاجه.
 final historyProvider = FutureProvider.family<List<HistoryPoint>, HistoryQuery>(
-  (ref, query) async {
-    final repository = ref.watch(deviceRepositoryProvider);
-    final device = await repository.findDevice(query.deviceId);
-
-    return repository.fetchHistory(
-      device,
-      keys: [query.key],
-      window: query.window,
-    );
-  },
+  (ref, query) => ref
+      .watch(deviceRepositoryProvider)
+      .fetchHistory(query.deviceId, keys: [query.key], window: query.window),
 );

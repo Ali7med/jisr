@@ -70,6 +70,56 @@ class Device {
   String get groupLabel =>
       (room != null && room!.isNotEmpty) ? room! : category.labelAr;
 
+  /// يبني جهازاً من استجابة السيرفر.
+  ///
+  /// الهاتف لا يترجم شيئاً بعد [ADR-0009]: السيرفر يسلّم النموذج الموحّد
+  /// جاهزاً، وهذه الدالة قراءة حقول لا ترجمة.
+  factory Device.fromJson(Map<String, dynamic> json) => Device(
+    integrationId: json['integrationId'] as String? ?? '',
+    accountId: json['accountId'] as String? ?? '',
+    nativeId: json['nativeId'] as String? ?? '',
+    name: json['name'] as String? ?? 'جهاز بلا اسم',
+    category: categoryFromWire(json['category'] as String?),
+    online: json['online'] as bool? ?? false,
+    model: json['model'] as String? ?? '',
+    productName: json['productName'] as String? ?? '',
+    iconUrl: json['iconUrl'] as String?,
+    room: json['room'] as String?,
+    isSubDevice: json['isSubDevice'] as bool? ?? false,
+  );
+
+  /// للكاش المحلي — نفس شكل العقد كي تقرأه [Device.fromJson] بلا فرع خاص.
+  Map<String, dynamic> toJson() => {
+    'integrationId': integrationId,
+    'accountId': accountId,
+    'nativeId': nativeId,
+    'name': name,
+    'category': category == DeviceCategory.switch_ ? 'switch' : category.name,
+    'online': online,
+    'model': model,
+    'productName': productName,
+    'iconUrl': iconUrl,
+    'room': room,
+    'isSubDevice': isSubDevice,
+  };
+
+  /// فئة لا نعرفها (سيرفر أحدث من التطبيق) تصير [DeviceCategory.other] —
+  /// الجهاز يظهر ويعمل، فقط تجميعه يكون أعمّ (القاعدة الحاكمة 3).
+  static DeviceCategory categoryFromWire(String? wire) => switch (wire) {
+    'light' => DeviceCategory.light,
+    'switch' => DeviceCategory.switch_,
+    'socket' => DeviceCategory.socket,
+    'sensor' => DeviceCategory.sensor,
+    'climate' => DeviceCategory.climate,
+    'fan' => DeviceCategory.fan,
+    'cover' => DeviceCategory.cover,
+    'lock' => DeviceCategory.lock,
+    'camera' => DeviceCategory.camera,
+    'energy' => DeviceCategory.energy,
+    'remote' => DeviceCategory.remote,
+    _ => DeviceCategory.other,
+  };
+
   /// يفكّ [id] العام إلى جزأيه. يرمي [FormatException] لمعرّف غير صالح.
   static (String integrationId, String nativeId) parseId(String id) {
     final index = id.indexOf(':');

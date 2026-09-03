@@ -6,6 +6,29 @@ abstract final class S {
   static const appName = 'جسر';
   static const appTagline = 'كل أجهزتك على جسر واحد';
 
+  // ── الحساب والدخول ─────────────────────────────────────────────────────────
+  static const signIn = 'تسجيل الدخول';
+  static const signUp = 'إنشاء حساب';
+  static const signOut = 'تسجيل الخروج';
+  static const email = 'البريد الإلكتروني';
+  static const password = 'كلمة المرور';
+  static const displayName = 'الاسم';
+  static const passwordTooShort = 'كلمة المرور عشرة محارف على الأقل';
+  static const emailInvalid = 'أدخل بريداً إلكترونياً صحيحاً';
+  static const haveAccount = 'لديك حساب؟ سجّل الدخول';
+  static const noAccountYet = 'ليس لديك حساب؟ أنشئ واحداً';
+  static const signInTagline =
+      'حسابك على جسر يحفظ ربط شركاتك ويشغّل أتمتتك على مدار الساعة.';
+  static const signOutConfirm =
+      'ستحتاج لتسجيل الدخول مرة أخرى. حساباتك المربوطة تبقى محفوظة على الخادم. متابعة؟';
+
+  // ── الاتصال ────────────────────────────────────────────────────────────────
+  static const offlineTitle = 'لا اتصال بخادم جسر';
+  static const offlineControlsDisabled =
+      'هذه آخر حالة معروفة، والتحكّم معطّل حتى يعود الاتصال.';
+  static const reconnecting = 'جارٍ إعادة الاتصال…';
+  static const liveConnected = 'التحديث اللحظي يعمل';
+
   // ── التكاملات والحسابات ────────────────────────────────────────────────────
   static const integrations = 'الشركات المدعومة';
   static const addAccount = 'ربط حساب';
@@ -23,7 +46,10 @@ abstract final class S {
   static const setupGuide = 'دليل الحصول على البيانات';
   static const removeAccount = 'إزالة الحساب';
   static const removeAccountConfirm =
-      'ستُمسح بيانات هذا الحساب من الجهاز وتختفي أجهزته. متابعة؟';
+      'ستُمسح بيانات هذا الحساب من الخادم وتختفي أجهزته وسجلّها. متابعة؟';
+  static const syncAccount = 'مزامنة الأجهزة';
+  static const syncing = 'جارٍ المزامنة…';
+  static const syncDone = 'تمت المزامنة';
   static const editAccount = 'تعديل الحساب';
   static const supportsHistory = 'يدعم السجلّ التاريخي';
   static const noPairing = 'الإقران يتم من تطبيق الشركة';
