@@ -49,7 +49,7 @@ import { jwtPlugin } from './auth/jwt.ts';
 import { createAuthService } from './auth/service.ts';
 import { createSecretsCipher } from './db/crypto.ts';
 import type { Repositories } from './db/repositories.ts';
-import { createAccountsService } from './accounts/service.ts';
+import { createAccountsService, type AccountsService } from './accounts/service.ts';
 import { createDevicesService } from './devices/service.ts';
 import { createIntegrationOpener } from './integrations/opener.ts';
 import { createIntegrationRegistry, type IntegrationRegistry } from './integrations/registry.ts';
@@ -68,6 +68,7 @@ declare module 'fastify' {
     bus: StateBus;
     statePipeline: StatePipeline;
     integrationOpener: IntegrationOpener;
+    accountsService: AccountsService;
   }
 }
 
@@ -194,6 +195,7 @@ export async function buildApp(
   app.decorate('bus', bus);
   app.decorate('statePipeline', createStatePipeline({ repositories: deps.repositories, bus }));
   app.decorate('integrationOpener', opener);
+  app.decorate('accountsService', accounts);
 
   await app.register(websocket);
 

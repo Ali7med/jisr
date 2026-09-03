@@ -34,9 +34,10 @@ function kindFor(code: number | undefined): IntegrationErrorKind {
     case 28841101:
       return 'permission';
     case 2001:
+      return 'quota';
     case 2007:
     case 28841002:
-      return 'quota';
+      return 'expired';
     case 2008:
     case 2009:
     case 28841105:
