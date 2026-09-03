@@ -10,7 +10,7 @@ import {
   type DeviceSnapshot,
   type HistoryResponse,
 } from '@jisr/shared';
-import type { AccountRecord, DeviceRecord, Repositories } from '../db/repositories.ts';
+import type { DeviceAccess, DeviceRecord, Repositories } from '../db/repositories.ts';
 import { ApiFailure } from '../errors.ts';
 import type { IntegrationOpener } from '../integrations/opener.ts';
 import type { IntegrationRegistry } from '../integrations/registry.ts';
@@ -37,6 +37,14 @@ export interface DevicesService {
 }
 
 const NOT_FOUND = 'لم نعثر على هذا الجهاز — قد يكون حُذف من حسابك لدى الشركة. زامِن الحساب.';
+
+/**
+ * جهاز يراه العضو ولا يملك التحكّم به يردّ 403 لا 404.
+ *
+ * التمييز مقصود: إخفاء وجود جهاز يظهر له في القائمة أصلاً لا يحمي شيئاً
+ * ويجعل العطل غامضاً. أما جهاز لا يراه فهو «غير موجود» بحقّه (P6).
+ */
+const FORBIDDEN = 'لا تملك صلاحية التحكّم بهذا الجهاز — اطلبها من صاحب الحساب.';
 
 /** فئة مخزّنة لا نعرفها (بعد ترقية غيّرت القائمة) تُعرض «أخرى» ولا تُسقط الجهاز. */
 function toCategory(stored: string): DeviceCategory {
@@ -65,24 +73,25 @@ export function createDevicesService(options: DevicesServiceOptions): DevicesSer
   const { repositories, registry, opener } = options;
   const now = options.now ?? (() => new Date());
 
-  async function owned(
-    userId: string,
-    deviceId: string,
-  ): Promise<{ device: DeviceRecord; account: AccountRecord }> {
+  async function visible(userId: string, deviceId: string): Promise<DeviceAccess> {
     let parsed: { integrationId: string; nativeId: string };
     try {
       parsed = parseDeviceId(deviceId);
     } catch {
       throw ApiFailure.notFound(NOT_FOUND);
     }
-    const found = await repositories.devices.findOwned(userId, parsed.integrationId, parsed.nativeId);
+    const found = await repositories.devices.findVisible(
+      userId,
+      parsed.integrationId,
+      parsed.nativeId,
+    );
     if (!found) throw ApiFailure.notFound(NOT_FOUND);
     return found;
   }
 
   return {
     async list(userId) {
-      return (await repositories.devices.listByUser(userId)).map(toDevice);
+      return (await repositories.devices.listVisible(userId)).map(toDevice);
     },
 
     /**
@@ -91,7 +100,7 @@ export function createDevicesService(options: DevicesServiceOptions): DevicesSer
      * (الدراسة § 7 — حدود الحصص).
      */
     async snapshot(userId, deviceId) {
-      const { device, account } = await owned(userId, deviceId);
+      const { device, account } = await visible(userId, deviceId);
       const integration = opener.open(account);
       try {
         let capabilities: Capability[] = device.capabilities;
@@ -118,10 +127,24 @@ export function createDevicesService(options: DevicesServiceOptions): DevicesSer
      * الحالة (WS في P2.2)، وهذا ما يجعل التحكّم التفاؤلي صادقاً.
      */
     async execute(userId, deviceId, commands) {
-      const { device, account } = await owned(userId, deviceId);
-      const integration = opener.open(account);
+      const access = await visible(userId, deviceId);
+      if (!access.canControl) {
+        throw new ApiFailure(403, 'FORBIDDEN', FORBIDDEN);
+      }
+
+      const integration = opener.open(access.account);
       try {
-        await integration.execute(device.nativeId, commands);
+        await integration.execute(access.device.nativeId, commands);
+
+        // كل فعل تحكّم يُنسب لفاعله — بما فيه أفعال المالك (P6).
+        await repositories.activity.record({
+          ownerId: access.ownerId,
+          actorId: userId,
+          deviceId,
+          action: 'command',
+          detail: `${access.device.name}: ${commands.map((c) => c.key).join('، ')}`,
+        });
+
         return { deviceId, accepted: true, at: now().toISOString() };
       } finally {
         integration.dispose();
@@ -133,7 +156,7 @@ export function createDevicesService(options: DevicesServiceOptions): DevicesSer
      * سحابة الشركة إن كانت تدعم السجلّ — والمصدر يُصرَّح به في الردّ.
      */
     async history(userId, deviceId, query) {
-      const { device, account } = await owned(userId, deviceId);
+      const { device, account } = await visible(userId, deviceId);
 
       const rows = await repositories.history.list({
         deviceId: device.id,

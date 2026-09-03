@@ -4,9 +4,12 @@ import swagger from '@fastify/swagger';
 import websocket from '@fastify/websocket';
 import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import {
+  AcceptInvitationRequest,
   Account,
   AccountList,
   AccountStatus,
+  ActivityEntry,
+  ActivityList,
   ApiError,
   Automation,
   AutomationAction,
@@ -44,8 +47,15 @@ import {
   HistoryPoint,
   HistoryResponse,
   HistorySource,
+  DevicePermission,
   IntegrationInfo,
   IntegrationList,
+  Invitation,
+  InvitationInput,
+  InvitationList,
+  Member,
+  MemberList,
+  MemberRole,
   Notification,
   NotificationEvent,
   NotificationList,
@@ -53,6 +63,7 @@ import {
   NotifySeverity,
   RealtimeAuthMessage,
   RealtimeEvent,
+  PermissionsInput,
   Scene,
   SceneAction,
   SceneInput,
@@ -87,7 +98,9 @@ import {
   createAutomationsService,
   createNotificationsService,
 } from './automation/service.ts';
+import { createHouseholdService } from './household/service.ts';
 import { accountRoutes } from './routes/accounts.ts';
+import { householdRoutes } from './routes/household.ts';
 import { automationRoutes } from './routes/automations.ts';
 import { sceneRoutes } from './routes/scenes.ts';
 import { authRoutes } from './routes/auth.ts';
@@ -174,6 +187,17 @@ const SHARED_SCHEMAS = [
   SceneInput,
   SceneList,
   SceneRunResult,
+  MemberRole,
+  DevicePermission,
+  Member,
+  MemberList,
+  PermissionsInput,
+  InvitationInput,
+  Invitation,
+  InvitationList,
+  AcceptInvitationRequest,
+  ActivityEntry,
+  ActivityList,
   HealthResponse,
 ];
 
@@ -255,6 +279,7 @@ export async function buildApp(
   const notifier = createNotifier(deps.repositories, bus);
   const scenes = createScenesService({ repositories: deps.repositories, devices });
   const automations = createAutomationsService(deps.repositories);
+  const household = createHouseholdService({ repositories: deps.repositories });
   const notifications = createNotificationsService(deps.repositories);
 
   const engine = createAutomationEngine({
@@ -293,6 +318,7 @@ export async function buildApp(
   await app.register(realtimeRoutes, { bus });
   await app.register(automationRoutes, { automations });
   await app.register(sceneRoutes, { scenes, notifications });
+  await app.register(householdRoutes, { household });
 
   return app;
 }

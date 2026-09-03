@@ -26,6 +26,12 @@ model User {
   scenes        Scene[]
   notifications Notification[]
 
+  ownedMemberships  Membership[]    @relation("SpaceOwner")
+  memberships       Membership[]    @relation("SpaceMember")
+  invitations       Invitation[]    @relation("InvitationOwner")
+  activityAsOwner   ActivityEntry[] @relation("ActivityOwner")
+  activityAsActor   ActivityEntry[] @relation("ActivityActor")
+
   @@map("users")
 }
 
@@ -105,8 +111,9 @@ model Device {
   createdAt  DateTime  @default(now()) @map("created_at")
   updatedAt  DateTime  @updatedAt @map("updated_at")
 
-  account Account        @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  history StateHistory[]
+  account     Account            @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  history     StateHistory[]
+  permissions DevicePermission[]
 
   @@unique([accountId, nativeId])
   @@index([accountId])
@@ -209,4 +216,87 @@ model Notification {
 
   @@index([userId, createdAt])
   @@map("notifications")
+}
+
+// ── العائلة والصلاحيات (P6) ─────────────────────────────────────────────────
+// نموذج «المساحة»: أجهزة كل مستخدم تعيش في مساحته، وقد يدعو غيره إليها.
+// لا كيان «منزل» منفصل: المالك هو المساحة، وهذا يكفي حتى يثبت العكس.
+
+enum MemberRole {
+  owner
+  member
+
+  @@map("member_role")
+}
+
+/// عضوية شخص في مساحة مالك. **المنع هو الأصل**: عضو لا يرى إلا ما مُنح.
+model Membership {
+  id       String     @id @default(uuid()) @db.Uuid
+  ownerId  String     @map("owner_id") @db.Uuid
+  memberId String     @map("member_id") @db.Uuid
+  role     MemberRole @default(member)
+  label    String     @default("")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  owner  User @relation("SpaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  member User @relation("SpaceMember", fields: [memberId], references: [id], onDelete: Cascade)
+
+  permissions DevicePermission[]
+
+  @@unique([ownerId, memberId])
+  @@index([memberId])
+  @@map("memberships")
+}
+
+/// إذن عضو على جهاز بعينه. وجود الصف يعني «يرى»، و`canControl` يعني «يتحكّم».
+model DevicePermission {
+  id           String  @id @default(uuid()) @db.Uuid
+  membershipId String  @map("membership_id") @db.Uuid
+  deviceId     String  @map("device_id") @db.Uuid
+  canControl   Boolean @default(false) @map("can_control")
+
+  membership Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  device     Device     @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@unique([membershipId, deviceId])
+  @@index([deviceId])
+  @@map("device_permissions")
+}
+
+/// دعوة بالبريد. الرمز يُخزَّن **مجزّأً** كرمز التجديد: تسريب القاعدة
+/// لا يمنح دخولاً إلى مساحة أحد.
+model Invitation {
+  id        String    @id @default(uuid()) @db.Uuid
+  ownerId   String    @map("owner_id") @db.Uuid
+  email     String
+  tokenHash String    @unique @map("token_hash")
+  label     String    @default("")
+  expiresAt DateTime  @map("expires_at")
+  acceptedAt DateTime? @map("accepted_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  owner User @relation("InvitationOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId])
+  @@index([email])
+  @@map("invitations")
+}
+
+/// سجلّ نشاط: مَن فعل ماذا ومتى. يُكتب لكل فعل تحكّم، بما فيه أفعال المالك.
+model ActivityEntry {
+  id       BigInt  @id @default(autoincrement())
+  ownerId  String  @map("owner_id") @db.Uuid
+  actorId  String  @map("actor_id") @db.Uuid
+  deviceId String? @map("device_id")
+  action   String
+  detail   String  @default("")
+
+  at DateTime @default(now())
+
+  owner User @relation("ActivityOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  actor User @relation("ActivityActor", fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId, at])
+  @@map("activity_log")
 }

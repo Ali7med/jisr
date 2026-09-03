@@ -168,7 +168,7 @@ describe('المحرّك من طرف إلى طرف', () => {
       expect(created.statusCode).toBe(201);
       const automationId = (created.json() as { id: string }).id;
 
-      const [device] = await harness.repositories.devices.listByUser(userId);
+      const [device] = await harness.repositories.devices.listVisible(userId);
       await harness.app.statePipeline.apply({
         userId,
         deviceId: device?.id ?? '',
@@ -204,7 +204,7 @@ describe('المحرّك من طرف إلى طرف', () => {
         payload: AUTOMATION,
       });
 
-      const [device] = await harness.repositories.devices.listByUser(userId);
+      const [device] = await harness.repositories.devices.listVisible(userId);
       await harness.app.statePipeline.apply({
         userId,
         deviceId: device?.id ?? '',
@@ -229,7 +229,7 @@ describe('المحرّك من طرف إلى طرف', () => {
         payload: { ...AUTOMATION, enabled: false },
       });
 
-      const [device] = await harness.repositories.devices.listByUser(userId);
+      const [device] = await harness.repositories.devices.listVisible(userId);
       await harness.app.statePipeline.apply({
         userId,
         deviceId: device?.id ?? '',

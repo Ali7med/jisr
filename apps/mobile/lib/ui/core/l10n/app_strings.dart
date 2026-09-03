@@ -80,6 +80,51 @@ abstract final class S {
   static const lastDay = 'آخر ٢٤ ساعة';
   static const lastWeek = 'آخر ٧ أيام';
 
+  // ── المشاهد ────────────────────────────────────────────────────────────────
+  static const scenes = 'المشاهد';
+  static const noScenes = 'لا توجد مشاهد';
+  static const noScenesHint =
+      'المشهد مجموعة أوامر تُنفَّذ بنقرة واحدة. أنشئ أول مشهد ليظهر هنا.';
+  static const sceneStepsCount = 'عدد الخطوات';
+  static const sceneRunning = 'جارٍ التنفيذ…';
+  static const sceneDone = 'نُفِّذ المشهد كاملاً';
+  static const scenePartial = 'نُفِّذ المشهد جزئياً';
+  static const scenePartialHint =
+      'بقيّة الخطوات نُفِّذت. تحقّق من الأجهزة أدناه ثم شغّل المشهد مرة أخرى.';
+  static const sceneNothingRan = 'لم تُنفَّذ أي خطوة';
+  static const sceneNothingRanHint =
+      'تحقّق من اتصال الأجهزة أدناه، ثم شغّل المشهد مرة أخرى.';
+  static const sceneFailedSteps = 'خطوات لم تُنفَّذ';
+  static const sceneRunFailed = 'تعذّر تشغيل المشهد';
+  static const sceneStepsSummary = 'خطوة نُفِّذت';
+
+  // ── الإشعارات ──────────────────────────────────────────────────────────────
+  static const notifications = 'الإشعارات';
+  static const noNotifications = 'لا توجد إشعارات';
+  static const noNotificationsHint =
+      'تظهر هنا تنبيهات أتمتتك وأجهزتك، وتبقى محفوظة حتى لو كان هاتفك مغلقاً.';
+  static const markAllRead = 'تعليم الكل كمقروء';
+  static const markAllReadDone = 'عُلّمت كل الإشعارات كمقروءة';
+  static const markAllReadFailed =
+      'تعذّر تعليم الإشعارات — تحقّق من الاتصال ثم أعد المحاولة.';
+  static const unreadNotifications = 'غير مقروء';
+
+  // ── الأتمتة ────────────────────────────────────────────────────────────────
+  static const automations = 'الأتمتة';
+  static const noAutomations = 'لا توجد أتمتة';
+  static const noAutomationsHint =
+      'الأتمتة تشغّل أجهزتك حسب وقت أو حسب حالة جهاز. ما تُنشئه سيظهر هنا مع سجلّ تنفيذه.';
+  static const automationsReadOnly =
+      'هذه الشاشة للعرض فقط — الإنشاء والتعديل يأتيان في تحديث قادم.';
+  static const automationEnabled = 'تعمل';
+  static const automationDisabled = 'موقوفة';
+  static const automationLastRun = 'آخر تنفيذ';
+  static const automationNeverRan = 'لم تُنفَّذ بعد';
+  static const automationRunLog = 'سجلّ التنفيذ';
+  static const automationNoRuns = 'لا سجلّ تنفيذ بعد';
+  static const automationRunSucceeded = 'نجح';
+  static const automationRunFailed = 'فشل';
+
   // ── عام ────────────────────────────────────────────────────────────────────
   static const retry = 'إعادة المحاولة';
   static const refresh = 'تحديث';
@@ -87,4 +132,5 @@ abstract final class S {
   static const cancel = 'إلغاء';
   static const confirm = 'تأكيد';
   static const loading = 'جارٍ التحميل…';
+  static const close = 'إغلاق';
 }

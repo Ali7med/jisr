@@ -5,6 +5,11 @@ import {
   createNotificationRepository,
   createSceneRepository,
 } from './automation-repositories.ts';
+import {
+  createActivityRepository,
+  createInvitationRepository,
+  createMembershipRepository,
+} from './household-repositories.ts';
 import type {
   AccountRecord,
   Bytes,
@@ -102,6 +107,9 @@ export function createPrismaRepositories(prisma: PrismaClient): Repositories {
     automations: createAutomationRepository(prisma),
     scenes: createSceneRepository(prisma),
     notifications: createNotificationRepository(prisma),
+    memberships: createMembershipRepository(prisma),
+    invitations: createInvitationRepository(prisma),
+    activity: createActivityRepository(prisma),
     devices: createDeviceRepository(prisma),
     history: createHistoryRepository(prisma),
   };
@@ -225,9 +233,15 @@ function toDevice(row: DeviceRow): DeviceRecord {
 
 function createDeviceRepository(prisma: PrismaClient): DeviceRepository {
   return {
-    async listByUser(userId) {
+    async listVisible(userId) {
       const rows = await prisma.device.findMany({
-        where: { account: { userId } },
+        where: {
+          OR: [
+            { account: { userId } },
+            // مساحات الآخرين: لا يظهر إلا ما مُنح إذناً عليه صراحةً
+            { permissions: { some: { membership: { memberId: userId } } } },
+          ],
+        },
         orderBy: [{ name: 'asc' }],
       });
       return rows.map(toDevice);
@@ -238,15 +252,35 @@ function createDeviceRepository(prisma: PrismaClient): DeviceRepository {
       return rows.map(toDevice);
     },
 
-    async findOwned(userId, integrationId, nativeId) {
+    async findVisible(userId, integrationId, nativeId) {
       const row = await prisma.device.findFirst({
-        where: { integrationId, nativeId, account: { userId } },
+        where: {
+          integrationId,
+          nativeId,
+          OR: [
+            { account: { userId } },
+            { permissions: { some: { membership: { memberId: userId } } } },
+          ],
+        },
         orderBy: { createdAt: 'asc' },
-        include: { account: true },
+        include: {
+          account: true,
+          permissions: { where: { membership: { memberId: userId } }, take: 1 },
+        },
       });
       if (!row) return null;
-      const { account, ...device } = row;
-      return { device: toDevice(device), account: toAccount(account) };
+
+      const { account, permissions, ...device } = row;
+      const isOwner = account.userId === userId;
+
+      return {
+        device: toDevice(device),
+        account: toAccount(account),
+        ownerId: account.userId,
+        isOwner,
+        // المالك يتحكّم دائماً؛ العضو بقدر إذنه لا أكثر
+        canControl: isOwner || (permissions[0]?.canControl ?? false),
+      };
     },
 
     async replaceForAccount(accountId, devices): Promise<SyncOutcome> {

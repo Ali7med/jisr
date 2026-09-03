@@ -16,3 +16,4 @@ export * from './scene.js';
 export * from './realtime.js';
 export * from './errors.js';
 export * from './health.js';
+export * from './household.js';

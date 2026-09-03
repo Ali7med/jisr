@@ -3,11 +3,14 @@ import 'package:jisr/config/app_config.dart';
 import 'package:jisr/data/api/api_exception.dart';
 import 'package:jisr/data/api/session_store.dart';
 import 'package:jisr/domain/models/account.dart';
+import 'package:jisr/domain/models/app_notification.dart';
+import 'package:jisr/domain/models/automation.dart';
 import 'package:jisr/domain/models/capability.dart';
 import 'package:jisr/domain/models/device.dart';
 import 'package:jisr/domain/models/device_snapshot.dart';
 import 'package:jisr/domain/models/device_state.dart';
 import 'package:jisr/domain/models/integration_info.dart';
+import 'package:jisr/domain/models/scene.dart';
 
 /// عميل سيرفر جسر — **الطريق الوحيد للبيانات** بعد [ADR-0009].
 ///
@@ -198,6 +201,49 @@ class JisrApiClient {
       ),
     );
     return _list(data['points'], HistoryPoint.fromJson);
+  }
+
+  // ── المشاهد ───────────────────────────────────────────────────────────────
+
+  Future<List<Scene>> fetchScenes() async {
+    final data = _unwrap(await _get('/scenes'));
+    return _list(data['scenes'], Scene.fromJson);
+  }
+
+  /// يشغّل مشهداً ويُعيد نتيجته **كاملة**.
+  ///
+  /// لا نختصرها إلى نجاح/فشل: المشهد قد ينفّذ ثلاث خطوات ويفشل في رابعة،
+  /// والشاشة تحتاج أسماء ما فشل وسببه كي تقول الحقيقة للمستخدم.
+  Future<SceneRunResult> runScene(String sceneId) async {
+    final data = _unwrap(await _post('/scenes/$sceneId/run', const {}));
+    return SceneRunResult.fromJson(data);
+  }
+
+  // ── الإشعارات ─────────────────────────────────────────────────────────────
+
+  Future<NotificationFeed> fetchNotifications() async {
+    final data = _unwrap(await _get('/notifications'));
+    return NotificationFeed(
+      items: _list(data['notifications'], AppNotification.fromJson),
+      unread: (data['unread'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  Future<void> markNotificationsRead() async {
+    await _post('/notifications/read', const {});
+  }
+
+  // ── الأتمتة ───────────────────────────────────────────────────────────────
+
+  Future<List<Automation>> fetchAutomations() async {
+    final data = _unwrap(await _get('/automations'));
+    return _list(data['automations'], Automation.fromJson);
+  }
+
+  /// سجلّ تنفيذ أتمتة واحدة — يُطلب عند فتحها لا مع القائمة كلها.
+  Future<List<AutomationRun>> fetchAutomationRuns(String automationId) async {
+    final data = _unwrap(await _get('/automations/$automationId/runs'));
+    return _list(data['runs'], AutomationRun.fromJson);
   }
 
   // ── الداخل ────────────────────────────────────────────────────────────────

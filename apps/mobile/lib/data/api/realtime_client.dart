@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:jisr/config/app_config.dart';
+import 'package:jisr/domain/models/app_notification.dart';
 import 'package:jisr/domain/models/device_state.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
@@ -35,6 +36,7 @@ class RealtimeClient {
   final WebSocketChannel Function(Uri) _connect;
 
   final _updates = StreamController<DeviceStateUpdate>.broadcast();
+  final _notifications = StreamController<AppNotification>.broadcast();
   final _status = StreamController<RealtimeStatus>.broadcast();
 
   WebSocketChannel? _channel;
@@ -45,6 +47,13 @@ class RealtimeClient {
   bool _closed = false;
 
   Stream<DeviceStateUpdate> get updates => _updates.stream;
+
+  /// الإشعارات الواردة على نفس القناة.
+  ///
+  /// مجرى منفصل عن [updates]: الإشعار ليس حالة جهاز، وخلطهما يجبر كل
+  /// مستهلك على تصفية ما لا يعنيه.
+  Stream<AppNotification> get notifications => _notifications.stream;
+
   Stream<RealtimeStatus> get status => _status.stream;
 
   RealtimeStatus current = RealtimeStatus.disconnected;
@@ -68,6 +77,7 @@ class RealtimeClient {
   Future<void> dispose() async {
     await stop();
     await _updates.close();
+    await _notifications.close();
     await _status.close();
   }
 
@@ -122,6 +132,13 @@ class RealtimeClient {
                 DateTime.now(),
           ),
         );
+      case 'notification':
+        final payload = message['notification'];
+        if (payload is Map) {
+          _notifications.add(
+            AppNotification.fromJson(Map<String, dynamic>.from(payload)),
+          );
+        }
       default:
         // نوع حدث لا نعرفه (سيرفر أحدث): نتجاهله ولا نُسقط القناة.
         break;

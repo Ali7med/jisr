@@ -8,6 +8,7 @@ import type {
   UserRecord,
 } from '../../src/db/repositories.ts';
 import { createAutomationMemory } from './automation-memory.ts';
+import { createHouseholdMemory } from './household-memory.ts';
 
 /** يسمح للاختبارات بزرع سجلّ قراءات بلا Postgres. */
 export interface MemoryRepositories extends Repositories {
@@ -26,6 +27,20 @@ export function createMemoryRepositories(): MemoryRepositories {
   const devices = new Map<string, DeviceRecord>();
   const history = new Map<string, HistoryRow[]>();
   const automation = createAutomationMemory();
+  const household = createHouseholdMemory({
+    user: (id) => users.get(id) ?? null,
+    deviceName: (id) => devices.get(id)?.name ?? '',
+  });
+
+  /** أذون العضو على الأجهزة — مبنية من العضويات كما يبنيها الاستعلام في Prisma. */
+  function permissionFor(userId: string, deviceId: string) {
+    for (const membership of household.memberships.values()) {
+      if (membership.memberId !== userId) continue;
+      const permission = membership.permissions.find((row) => row.deviceId === deviceId);
+      if (permission) return permission;
+    }
+    return null;
+  }
 
   return {
     async ping() {
@@ -135,25 +150,34 @@ export function createMemoryRepositories(): MemoryRepositories {
     },
 
     devices: {
-      async listByUser(userId) {
+      async listVisible(userId) {
         const owned = new Set(
           [...accounts.values()].filter((a) => a.userId === userId).map((a) => a.id),
         );
-        return [...devices.values()].filter((device) => owned.has(device.accountId));
+        return [...devices.values()].filter(
+          (device) => owned.has(device.accountId) || permissionFor(userId, device.id) !== null,
+        );
       },
       async listByAccount(accountId) {
         return [...devices.values()].filter((device) => device.accountId === accountId);
       },
-      async findOwned(userId, integrationId, nativeId) {
+      async findVisible(userId, integrationId, nativeId) {
         for (const device of devices.values()) {
           const account = accounts.get(device.accountId);
-          if (
-            account?.userId === userId &&
-            device.integrationId === integrationId &&
-            device.nativeId === nativeId
-          ) {
-            return { device, account };
-          }
+          if (!account) continue;
+          if (device.integrationId !== integrationId || device.nativeId !== nativeId) continue;
+
+          const isOwner = account.userId === userId;
+          const permission = permissionFor(userId, device.id);
+          if (!isOwner && !permission) continue;
+
+          return {
+            device,
+            account,
+            ownerId: account.userId,
+            isOwner,
+            canControl: isOwner || (permission?.canControl ?? false),
+          };
         }
         return null;
       },
@@ -219,6 +243,9 @@ export function createMemoryRepositories(): MemoryRepositories {
     },
 
     automations: automation.automationRepository,
+    memberships: household.membershipRepository,
+    invitations: household.invitationRepository,
+    activity: household.activityRepository,
     scenes: automation.sceneRepository,
     notifications: automation.notificationRepository,
 

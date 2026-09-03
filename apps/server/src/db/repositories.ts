@@ -4,6 +4,7 @@ import type {
   AutomationCondition,
   AutomationTrigger,
   Capability,
+  MemberRole,
   NotifySeverity,
   SceneStep,
 } from '@jisr/shared';
@@ -60,6 +61,9 @@ export interface Repositories {
   readonly automations: AutomationRepository;
   readonly scenes: SceneRepository;
   readonly notifications: NotificationRepository;
+  readonly memberships: MembershipRepository;
+  readonly invitations: InvitationRepository;
+  readonly activity: ActivityRepository;
   readonly devices: DeviceRepository;
   readonly history: StateHistoryRepository;
 }
@@ -150,19 +154,38 @@ export interface SyncOutcome {
   readonly removed: number;
 }
 
+/**
+ * ما يملكه المستخدم من صلاحية على جهاز يراه.
+ *
+ * التمييز بين «لا يراه» و«يراه ولا يتحكّم» مقصود: الأول 404 والثاني 403.
+ * إخفاء وجود جهاز يراه العضو أصلاً لا يحمي شيئاً ويربكه فقط.
+ */
+export interface DeviceAccess {
+  readonly device: DeviceRecord;
+  readonly account: AccountRecord;
+  /** مالك المساحة التي يعيش فيها الجهاز — إليه يُنسب سجلّ النشاط. */
+  readonly ownerId: string;
+  readonly isOwner: boolean;
+  readonly canControl: boolean;
+}
+
 export interface DeviceRepository {
-  listByUser(userId: string): Promise<DeviceRecord[]>;
+  /**
+   * كل ما **يراه** المستخدم: أجهزة مساحته، وأجهزة مساحات غيره التي
+   * مُنح إذناً عليها صراحةً. المنع هو الأصل (P6).
+   */
+  listVisible(userId: string): Promise<DeviceRecord[]>;
   listByAccount(accountId: string): Promise<DeviceRecord[]>;
   /**
-   * يحلّ معرّف العقد المركّب لمستخدم بعينه. جهاز واحد قد يظهر عبر
-   * حسابين لنفس المستخدم (مشروع Tuya مربوط مرّتين) — نرجّح الأقدم كي
-   * يبقى الحلّ حتمياً بدل عشوائي.
+   * يحلّ معرّف العقد المركّب لمستخدم بعينه، مع صلاحيته عليه. جهاز واحد
+   * قد يظهر عبر حسابين لنفس المالك (مشروع Tuya مربوط مرّتين) — نرجّح
+   * الأقدم كي يبقى الحلّ حتمياً بدل عشوائي.
    */
-  findOwned(
+  findVisible(
     userId: string,
     integrationId: string,
     nativeId: string,
-  ): Promise<{ device: DeviceRecord; account: AccountRecord } | null>;
+  ): Promise<DeviceAccess | null>;
   /** يُسقط ما لم يعد لدى الشركة ويضيف الجديد — نتيجة المزامنة الكاملة. */
   replaceForAccount(accountId: string, devices: readonly DeviceUpsertInput[]): Promise<SyncOutcome>;
   saveCapabilities(deviceId: string, capabilities: readonly Capability[]): Promise<void>;
@@ -278,4 +301,77 @@ export interface NotificationRepository {
     severity: NotifySeverity;
   }): Promise<NotificationRecord>;
   markAllRead(userId: string, at: Date): Promise<void>;
+}
+
+// ── العائلة والصلاحيات (P6) ─────────────────────────────────────────────────
+
+export interface MembershipRecord {
+  readonly id: string;
+  readonly ownerId: string;
+  readonly memberId: string;
+  readonly memberEmail: string;
+  readonly memberName: string;
+  readonly label: string;
+  readonly role: MemberRole;
+  readonly createdAt: Date;
+  readonly permissions: readonly {
+    deviceId: string;
+    deviceName: string;
+    canControl: boolean;
+  }[];
+}
+
+export interface MembershipRepository {
+  listForOwner(ownerId: string): Promise<MembershipRecord[]>;
+  find(ownerId: string, membershipId: string): Promise<MembershipRecord | null>;
+  create(input: { ownerId: string; memberId: string; label: string }): Promise<MembershipRecord>;
+  remove(membershipId: string): Promise<void>;
+  /** يستبدل قائمة الأذونات كلها — «اضبط» أوضح من «أضف/احذف». */
+  setPermissions(
+    membershipId: string,
+    permissions: readonly { deviceId: string; canControl: boolean }[],
+  ): Promise<void>;
+}
+
+export interface InvitationRecord {
+  readonly id: string;
+  readonly ownerId: string;
+  readonly email: string;
+  readonly label: string;
+  readonly expiresAt: Date;
+  readonly acceptedAt: Date | null;
+  readonly createdAt: Date;
+}
+
+export interface InvitationRepository {
+  listForOwner(ownerId: string): Promise<InvitationRecord[]>;
+  create(input: {
+    ownerId: string;
+    email: string;
+    label: string;
+    tokenHash: string;
+    expiresAt: Date;
+  }): Promise<InvitationRecord>;
+  findValidByHash(tokenHash: string, now: Date): Promise<InvitationRecord | null>;
+  markAccepted(id: string, at: Date): Promise<void>;
+  remove(ownerId: string, id: string): Promise<void>;
+}
+
+export interface ActivityRecord {
+  readonly actorName: string;
+  readonly action: string;
+  readonly detail: string;
+  readonly deviceId: string | null;
+  readonly at: Date;
+}
+
+export interface ActivityRepository {
+  record(input: {
+    ownerId: string;
+    actorId: string;
+    deviceId?: string;
+    action: string;
+    detail: string;
+  }): Promise<void>;
+  listForOwner(ownerId: string, limit: number): Promise<ActivityRecord[]>;
 }

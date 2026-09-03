@@ -4,11 +4,20 @@ import type {
   ApiError,
   AuthSession,
   AuthTokens,
+  Automation,
+  AutomationInput,
+  AutomationList,
+  AutomationRunList,
   CommandResult,
   DeviceList,
   DeviceSnapshot,
   HistoryResponse,
   IntegrationList,
+  NotificationList,
+  Scene,
+  SceneInput,
+  SceneList,
+  SceneRunResult,
   SyncResult,
 } from '@jisr/shared';
 
@@ -154,6 +163,26 @@ export function createApi(options: ApiOptions) {
         `/devices/${encodeURIComponent(id)}/history?${query.toString()}`,
       );
     },
+
+    automations: () => call<AutomationList>('/automations'),
+    createAutomation: (input: AutomationInput) => post<Automation>('/automations', input),
+    updateAutomation: (id: string, input: AutomationInput) =>
+      call<Automation>(`/automations/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(input),
+      }),
+    deleteAutomation: (id: string) => call<void>(`/automations/${id}`, { method: 'DELETE' }),
+    /** سجلّ التنفيذ — به يصير «لماذا لم تعمل أتمتتي؟» سؤالاً له جواب (ADR-0015). */
+    automationRuns: (id: string) => call<AutomationRunList>(`/automations/${id}/runs`),
+
+    scenes: () => call<SceneList>('/scenes'),
+    createScene: (input: SceneInput) => post<Scene>('/scenes', input),
+    deleteScene: (id: string) => call<void>(`/scenes/${id}`, { method: 'DELETE' }),
+    /** لا يرمي حين يفشل جهاز: النجاح الجزئي يعود في `failures` كي تُعرض الأسباب. */
+    runScene: (id: string) => post<SceneRunResult>(`/scenes/${id}/run`),
+
+    notifications: () => call<NotificationList>('/notifications'),
+    markNotificationsRead: () => post<void>('/notifications/read'),
   };
 }
 

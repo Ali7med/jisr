@@ -168,7 +168,7 @@ describe('GET /devices/:id/history', () => {
   it('يقرأ من قاعدتنا حين تحوي قراءات ولا يستدعي الشركة', async () => {
     const me = await harness.app.inject({ method: 'GET', url: '/auth/me', headers: auth });
     const userId = (me.json() as { id: string }).id;
-    const [device] = await harness.repositories.devices.listByUser(userId);
+    const [device] = await harness.repositories.devices.listVisible(userId);
     harness.repositories.seedHistory(device?.id ?? '', [
       { key: 'cur_power', value: 7, recordedAt: new Date('2026-09-02T09:00:00.000Z') },
     ]);
