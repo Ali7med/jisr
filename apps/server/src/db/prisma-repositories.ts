@@ -1,5 +1,13 @@
 import type { PrismaClient } from '@prisma/client';
+import type { AccountStatus, Capability } from '@jisr/shared';
 import type {
+  AccountRecord,
+  Bytes,
+  AccountRepository,
+  DeviceRecord,
+  DeviceRepository,
+  StateHistoryRepository,
+  SyncOutcome,
   Repositories,
   RefreshTokenRecord,
   RefreshTokenRepository,
@@ -79,5 +87,210 @@ export function createPrismaRepositories(prisma: PrismaClient): Repositories {
     },
   };
 
-  return { users, refreshTokens };
+  return {
+    users,
+    refreshTokens,
+    accounts: createAccountRepository(prisma),
+    devices: createDeviceRepository(prisma),
+    history: createHistoryRepository(prisma),
+  };
+}
+
+// ── الحسابات ────────────────────────────────────────────────────────────────
+
+interface AccountRow {
+  id: string;
+  userId: string;
+  integrationId: string;
+  label: string;
+  status: string;
+  secretsCipher: Bytes;
+  secretsIv: Bytes;
+  secretsTag: Bytes;
+  keyVersion: number;
+  credentialsExpireAt: Date | null;
+  lastCheckedAt: Date | null;
+  createdAt: Date;
+}
+
+function toAccount(row: AccountRow): AccountRecord {
+  return {
+    id: row.id,
+    userId: row.userId,
+    integrationId: row.integrationId,
+    label: row.label,
+    status: row.status as AccountStatus,
+    secretsCipher: row.secretsCipher,
+    secretsIv: row.secretsIv,
+    secretsTag: row.secretsTag,
+    keyVersion: row.keyVersion,
+    credentialsExpireAt: row.credentialsExpireAt,
+    lastCheckedAt: row.lastCheckedAt,
+    createdAt: row.createdAt,
+  };
+}
+
+function createAccountRepository(prisma: PrismaClient): AccountRepository {
+  return {
+    async listByUser(userId) {
+      const rows = await prisma.account.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'asc' },
+      });
+      return rows.map(toAccount);
+    },
+
+    async findOwned(userId, accountId) {
+      const row = await prisma.account.findFirst({ where: { id: accountId, userId } });
+      return row ? toAccount(row) : null;
+    },
+
+    async create(input) {
+      return toAccount(await prisma.account.create({ data: { ...input, status: 'active' } }));
+    },
+
+    async update(accountId, patch) {
+      return toAccount(await prisma.account.update({ where: { id: accountId }, data: patch }));
+    },
+
+    async remove(accountId) {
+      await prisma.account.delete({ where: { id: accountId } });
+    },
+
+    async countDevices(accountIds) {
+      if (accountIds.length === 0) return new Map();
+      const groups = await prisma.device.groupBy({
+        by: ['accountId'],
+        where: { accountId: { in: [...accountIds] } },
+        _count: { _all: true },
+      });
+      return new Map(groups.map((group) => [group.accountId, group._count._all]));
+    },
+  };
+}
+
+// ── الأجهزة ─────────────────────────────────────────────────────────────────
+
+interface DeviceRow {
+  id: string;
+  accountId: string;
+  integrationId: string;
+  nativeId: string;
+  name: string;
+  category: string;
+  online: boolean;
+  model: string;
+  productName: string;
+  iconUrl: string | null;
+  room: string | null;
+  isSubDevice: boolean;
+  capabilities: unknown;
+  lastSeenAt: Date | null;
+}
+
+function toDevice(row: DeviceRow): DeviceRecord {
+  return {
+    id: row.id,
+    accountId: row.accountId,
+    integrationId: row.integrationId,
+    nativeId: row.nativeId,
+    name: row.name,
+    category: row.category,
+    online: row.online,
+    model: row.model,
+    productName: row.productName,
+    iconUrl: row.iconUrl,
+    room: row.room,
+    isSubDevice: row.isSubDevice,
+    capabilities: Array.isArray(row.capabilities) ? (row.capabilities as Capability[]) : [],
+    lastSeenAt: row.lastSeenAt,
+  };
+}
+
+function createDeviceRepository(prisma: PrismaClient): DeviceRepository {
+  return {
+    async listByUser(userId) {
+      const rows = await prisma.device.findMany({
+        where: { account: { userId } },
+        orderBy: [{ name: 'asc' }],
+      });
+      return rows.map(toDevice);
+    },
+
+    async listByAccount(accountId) {
+      const rows = await prisma.device.findMany({ where: { accountId }, orderBy: { name: 'asc' } });
+      return rows.map(toDevice);
+    },
+
+    async findOwned(userId, integrationId, nativeId) {
+      const row = await prisma.device.findFirst({
+        where: { integrationId, nativeId, account: { userId } },
+        orderBy: { createdAt: 'asc' },
+        include: { account: true },
+      });
+      if (!row) return null;
+      const { account, ...device } = row;
+      return { device: toDevice(device), account: toAccount(account) };
+    },
+
+    async replaceForAccount(accountId, devices): Promise<SyncOutcome> {
+      const existing = await prisma.device.findMany({
+        where: { accountId },
+        select: { nativeId: true },
+      });
+      const known = new Set(existing.map((row) => row.nativeId));
+      const incoming = new Set(devices.map((device) => device.nativeId));
+      const removed = existing.filter((row) => !incoming.has(row.nativeId)).length;
+      const added = devices.filter((device) => !known.has(device.nativeId)).length;
+      const now = new Date();
+
+      await prisma.$transaction([
+        ...devices.map((device) =>
+          prisma.device.upsert({
+            where: { accountId_nativeId: { accountId, nativeId: device.nativeId } },
+            // القدرات لا تُلمس هنا: تُجلب كسولاً عند فتح الجهاز توفيراً
+            // لحصّة استدعاءات الشركة (الدراسة § 7)
+            create: { ...device, accountId, lastSeenAt: now, capabilities: [] },
+            update: { ...device, lastSeenAt: now },
+          }),
+        ),
+        prisma.device.deleteMany({
+          where: { accountId, nativeId: { notIn: devices.map((device) => device.nativeId) } },
+        }),
+      ]);
+
+      return { total: devices.length, added, removed };
+    },
+
+    async saveCapabilities(deviceId, capabilities) {
+      await prisma.device.update({
+        where: { id: deviceId },
+        data: { capabilities: [...capabilities] },
+      });
+    },
+  };
+}
+
+// ── السجلّ ──────────────────────────────────────────────────────────────────
+
+function createHistoryRepository(prisma: PrismaClient): StateHistoryRepository {
+  return {
+    async list(query) {
+      const rows = await prisma.stateHistory.findMany({
+        where: {
+          deviceId: query.deviceId,
+          recordedAt: { gte: query.start, lte: query.end },
+          value: { not: null },
+          ...(query.keys.length > 0 ? { key: { in: [...query.keys] } } : {}),
+        },
+        orderBy: { recordedAt: 'asc' },
+        take: query.limit,
+      });
+      return rows.map((row) => ({
+        key: row.key,
+        value: row.value ?? 0,
+        recordedAt: row.recordedAt,
+      }));
+    },
+  };
 }

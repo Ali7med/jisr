@@ -584,6 +584,306 @@
           }
         }
       },
+      "IntegrationList": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "integrations"
+        ],
+        "properties": {
+          "integrations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IntegrationInfo"
+            }
+          }
+        }
+      },
+      "AccountStatus": {
+        "anyOf": [
+          {
+            "description": "يعمل",
+            "type": "string",
+            "enum": [
+              "active"
+            ]
+          },
+          {
+            "description": "اعتمادات مرفوضة — يلزم إعادة الإعداد",
+            "type": "string",
+            "enum": [
+              "invalid_credentials"
+            ]
+          },
+          {
+            "description": "انتهى اشتراك المشروع لدى الشركة",
+            "type": "string",
+            "enum": [
+              "expired"
+            ]
+          },
+          {
+            "description": "أوقفه المستخدم",
+            "type": "string",
+            "enum": [
+              "disabled"
+            ]
+          }
+        ]
+      },
+      "Account": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "integrationId",
+          "label",
+          "status",
+          "deviceCount",
+          "createdAt"
+        ],
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "integrationId": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AccountStatus"
+          },
+          "deviceCount": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "credentialsExpireAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "lastCheckedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        }
+      },
+      "Credentials": {
+        "description": "قيم حقول الاعتماد — تُشفَّر فور وصولها ولا تُعاد أبداً",
+        "type": "object",
+        "additionalProperties": {
+          "type": "string"
+        }
+      },
+      "CreateAccountRequest": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "integrationId",
+          "label",
+          "credentials"
+        ],
+        "properties": {
+          "integrationId": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "label": {
+            "minLength": 1,
+            "maxLength": 60,
+            "type": "string"
+          },
+          "credentials": {
+            "$ref": "#/components/schemas/Credentials"
+          }
+        }
+      },
+      "UpdateAccountRequest": {
+        "additionalProperties": false,
+        "type": "object",
+        "properties": {
+          "label": {
+            "minLength": 1,
+            "maxLength": 60,
+            "type": "string"
+          },
+          "credentials": {
+            "$ref": "#/components/schemas/Credentials"
+          }
+        }
+      },
+      "AccountList": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "accounts"
+        ],
+        "properties": {
+          "accounts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Account"
+            }
+          }
+        }
+      },
+      "SyncResult": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "accountId",
+          "deviceCount",
+          "added",
+          "removed",
+          "at"
+        ],
+        "properties": {
+          "accountId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "deviceCount": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "added": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "removed": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "at": {
+            "format": "date-time",
+            "type": "string"
+          }
+        }
+      },
+      "DeviceList": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "devices"
+        ],
+        "properties": {
+          "devices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Device"
+            }
+          }
+        }
+      },
+      "DeviceSnapshot": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "device",
+          "values",
+          "at"
+        ],
+        "properties": {
+          "device": {
+            "$ref": "#/components/schemas/Device"
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StateValue"
+            }
+          },
+          "at": {
+            "format": "date-time",
+            "type": "string"
+          }
+        }
+      },
+      "CommandRequest": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "commands"
+        ],
+        "properties": {
+          "commands": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Command"
+            }
+          }
+        }
+      },
+      "CommandResult": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "deviceId",
+          "accepted",
+          "at"
+        ],
+        "properties": {
+          "deviceId": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "accepted": {
+            "type": "boolean"
+          },
+          "at": {
+            "format": "date-time",
+            "type": "string"
+          }
+        }
+      },
+      "HistorySource": {
+        "anyOf": [
+          {
+            "type": "string",
+            "enum": [
+              "server"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
+              "integration"
+            ]
+          }
+        ]
+      },
+      "HistoryResponse": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "deviceId",
+          "source",
+          "points"
+        ],
+        "properties": {
+          "deviceId": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/components/schemas/HistorySource"
+          },
+          "points": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HistoryPoint"
+            }
+          }
+        }
+      },
       "HealthResponse": {
         "additionalProperties": false,
         "type": "object",
@@ -812,6 +1112,615 @@
             }
           },
           "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/integrations": {
+      "get": {
+        "summary": "الشركات المدعومة وحقول ربط كلٍّ منها",
+        "tags": [
+          "integrations"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrationList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/accounts": {
+      "get": {
+        "summary": "حسابات المستخدم المربوطة",
+        "tags": [
+          "accounts"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "ربط حساب جديد (يتحقّق من الاعتمادات قبل الحفظ ثم يزامن)",
+        "tags": [
+          "accounts"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAccountRequest"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Account"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/accounts/{id}": {
+      "patch": {
+        "summary": "تعديل التسمية أو تحديث الاعتمادات",
+        "tags": [
+          "accounts"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAccountRequest"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Account"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "فكّ ربط الحساب وحذف أجهزته وسجلّها",
+        "tags": [
+          "accounts"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Default Response"
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/accounts/{id}/sync": {
+      "post": {
+        "summary": "إعادة جلب أجهزة الحساب من الشركة",
+        "tags": [
+          "accounts"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/devices": {
+      "get": {
+        "summary": "كل أجهزة المستخدم عبر كل حساباته",
+        "tags": [
+          "devices"
+        ],
+        "description": "تُقرأ من قاعدتنا لا من الشركة — لا تستهلك حصّة استدعاءات.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/devices/{id}": {
+      "get": {
+        "summary": "لقطة جهاز: بياناته وقدراته وقيمه الحالية",
+        "tags": [
+          "devices"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "pattern": "^[^:]+:.+$",
+              "type": "string"
+            },
+            "example": "tuya:bf1234567890abcdef",
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceSnapshot"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/devices/{id}/commands": {
+      "post": {
+        "summary": "تنفيذ أوامر تحكّم",
+        "tags": [
+          "devices"
+        ],
+        "description": "القبول يعني «أُرسل للشركة» لا «نفّذه الجهاز».",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommandRequest"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "pattern": "^[^:]+:.+$",
+              "type": "string"
+            },
+            "example": "tuya:bf1234567890abcdef",
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommandResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/devices/{id}/history": {
+      "get": {
+        "summary": "سجلّ قراءات الجهاز",
+        "tags": [
+          "devices"
+        ],
+        "description": "من قاعدتنا أولاً، ومن الشركة حتى يمتلئ سجلّنا — المصدر مُصرَّح به.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "keys",
+            "required": false,
+            "description": "مفاتيح القدرات مفصولة بفواصل"
+          },
+          {
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "in": "query",
+            "name": "start",
+            "required": false
+          },
+          {
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "in": "query",
+            "name": "end",
+            "required": false
+          },
+          {
+            "schema": {
+              "minimum": 1,
+              "maximum": 1000,
+              "default": 100,
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          },
+          {
+            "schema": {
+              "pattern": "^[^:]+:.+$",
+              "type": "string"
+            },
+            "example": "tuya:bf1234567890abcdef",
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoryResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "502": {
             "description": "Default Response",
             "content": {
               "application/json": {

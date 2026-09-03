@@ -1,5 +1,27 @@
 import type { FastifyError, FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { ApiError } from '@jisr/shared';
+import { IntegrationError, statusForKind } from './integrations/errors.ts';
+
+/**
+ * فشل متوقّع نعرف رمزه ورسالته — تُرمى من الخدمات وتُترجم هنا مرة واحدة
+ * بدل `try/catch` في كل مسار.
+ */
+export class ApiFailure extends Error {
+  readonly status: number;
+  readonly code: string;
+
+  constructor(status: number, code: string, message: string) {
+    super(message);
+    this.name = 'ApiFailure';
+    this.status = status;
+    this.code = code;
+  }
+
+  /** المورد غير موجود — أو ليس للمستخدم. لا نفرّق: عدم التفريق يمنع الاستكشاف. */
+  static notFound(message: string): ApiFailure {
+    return new ApiFailure(404, 'NOT_FOUND', message);
+  }
+}
 
 /**
  * يوحّد كل الأخطاء على عقد `ApiError`: رمز للتشخيص، ورسالة **عربية تشرح
@@ -18,6 +40,26 @@ export function registerErrorHandlers(app: FastifyInstance): void {
 
   app.setErrorHandler((error: FastifyError, request: FastifyRequest, reply: FastifyReply) => {
     const status = error.statusCode ?? 500;
+
+    if (error instanceof ApiFailure) {
+      return reply.code(error.status).send({ code: error.code, message: error.message });
+    }
+
+    /**
+     * خطأ من تكامل: الرسالة عربية جاهزة وقد كتبها التكامل، والتفاصيل
+     * الأصلية (كود الشركة ونصّها الإنجليزي) تذهب للسجلّ لا للمستخدم.
+     */
+    if (error instanceof IntegrationError) {
+      request.log.warn(
+        { integrationId: error.integrationId, code: error.code, raw: error.rawMessage },
+        'خطأ من تكامل',
+      );
+      const body: ApiError = {
+        code: `INTEGRATION_${error.kind.toUpperCase()}`,
+        message: error.message,
+      };
+      return reply.code(statusForKind(error.kind)).send(body);
+    }
 
     if (error.validation) {
       const body: ApiError = {

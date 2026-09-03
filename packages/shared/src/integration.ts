@@ -51,3 +51,9 @@ export const IntegrationInfo = Type.Object(
   { $id: 'IntegrationInfo', additionalProperties: false },
 );
 export type IntegrationInfo = Static<typeof IntegrationInfo>;
+
+export const IntegrationList = Type.Object(
+  { integrations: Type.Array(Type.Ref(IntegrationInfo)) },
+  { $id: 'IntegrationList', additionalProperties: false },
+);
+export type IntegrationList = Static<typeof IntegrationList>;
