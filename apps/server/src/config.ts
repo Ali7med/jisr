@@ -13,6 +13,10 @@ export interface Config {
   /** مفاتيح تشفير الأسرار مرقّمة بنسخها — تسمح بالتدوير بلا توقّف. */
   readonly secretsKeys: ReadonlyMap<number, Buffer>;
   readonly secretsKeyVersion: number;
+  /** صفر = معطّل. الاستقصاء حلّ مؤقّت حتى دفع الرسائل (P2.1). */
+  readonly statePollIntervalMs: number;
+  /** مدة استبقاء السلسلة الزمنية — ADR-0013. */
+  readonly historyRetentionDays: number;
 }
 
 function required(env: NodeJS.ProcessEnv, key: string): string {
@@ -63,5 +67,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     refreshTokenTtlDays: Number(env['REFRESH_TOKEN_TTL_DAYS'] ?? 30),
     secretsKeys,
     secretsKeyVersion: activeVersion,
+    statePollIntervalMs: Number(env['STATE_POLL_INTERVAL_SECONDS'] ?? 0) * 1000,
+    historyRetentionDays: Number(env['HISTORY_RETENTION_DAYS'] ?? 90),
   };
 }

@@ -80,6 +80,9 @@ export function createMemoryRepositories(): MemoryRepositories {
       async listByUser(userId) {
         return [...accounts.values()].filter((account) => account.userId === userId);
       },
+      async listActive() {
+        return [...accounts.values()].filter((account) => account.status === 'active');
+      },
       async findOwned(userId, accountId) {
         const account = accounts.get(accountId);
         return account && account.userId === userId ? account : null;
@@ -191,6 +194,22 @@ export function createMemoryRepositories(): MemoryRepositories {
               (query.keys.length === 0 || query.keys.includes(row.key)),
           )
           .slice(0, query.limit);
+      },
+      async record(rows) {
+        for (const row of rows) {
+          const current = history.get(row.deviceId) ?? [];
+          current.push({ key: row.key, value: row.value ?? 0, recordedAt: row.recordedAt });
+          history.set(row.deviceId, current);
+        }
+      },
+      async prune(olderThan) {
+        let removed = 0;
+        for (const [deviceId, rows] of history) {
+          const kept = rows.filter((row) => row.recordedAt >= olderThan);
+          removed += rows.length - kept.length;
+          history.set(deviceId, kept);
+        }
+        return removed;
       },
     },
 

@@ -1,6 +1,7 @@
 import Fastify, { type FastifyInstance } from 'fastify';
 import rateLimit from '@fastify/rate-limit';
 import swagger from '@fastify/swagger';
+import websocket from '@fastify/websocket';
 import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import {
   Account,
@@ -27,12 +28,17 @@ import {
   DeviceCategory,
   DeviceList,
   DeviceSnapshot,
+  DeviceEvent,
   HealthResponse,
+  HelloEvent,
   HistoryPoint,
   HistoryResponse,
   HistorySource,
   IntegrationInfo,
   IntegrationList,
+  RealtimeAuthMessage,
+  RealtimeEvent,
+  StateEvent,
   StateValue,
   SyncResult,
   UpdateAccountRequest,
@@ -47,10 +53,23 @@ import { createAccountsService } from './accounts/service.ts';
 import { createDevicesService } from './devices/service.ts';
 import { createIntegrationOpener } from './integrations/opener.ts';
 import { createIntegrationRegistry, type IntegrationRegistry } from './integrations/registry.ts';
+import { createStateBus, type StateBus } from './state/bus.ts';
+import { createStatePipeline, type StatePipeline } from './state/pipeline.ts';
 import { accountRoutes } from './routes/accounts.ts';
 import { authRoutes } from './routes/auth.ts';
 import { deviceRoutes } from './routes/devices.ts';
 import { healthRoutes } from './routes/health.ts';
+import { realtimeRoutes } from './routes/realtime.ts';
+import type { IntegrationOpener } from './integrations/opener.ts';
+
+declare module 'fastify' {
+  interface FastifyInstance {
+    /** قناة الأحداث اللحظية — تقرأها المهامّ الخلفية في `main.ts`. */
+    bus: StateBus;
+    statePipeline: StatePipeline;
+    integrationOpener: IntegrationOpener;
+  }
+}
 
 /**
  * مخطّطات العقد المشترك تُسجَّل مرة واحدة، فتُشير إليها المسارات بـ `$ref`
@@ -89,6 +108,11 @@ const SHARED_SCHEMAS = [
   CommandResult,
   HistorySource,
   HistoryResponse,
+  HelloEvent,
+  StateEvent,
+  DeviceEvent,
+  RealtimeEvent,
+  RealtimeAuthMessage,
   HealthResponse,
 ];
 
@@ -166,10 +190,18 @@ export async function buildApp(
   });
   const devices = createDevicesService({ repositories: deps.repositories, registry, opener });
 
+  const bus = createStateBus();
+  app.decorate('bus', bus);
+  app.decorate('statePipeline', createStatePipeline({ repositories: deps.repositories, bus }));
+  app.decorate('integrationOpener', opener);
+
+  await app.register(websocket);
+
   await app.register(healthRoutes, { config });
   await app.register(authRoutes, { auth });
   await app.register(accountRoutes, { accounts });
   await app.register(deviceRoutes, { devices });
+  await app.register(realtimeRoutes, { bus });
 
   return app;
 }

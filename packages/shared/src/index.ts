@@ -10,5 +10,6 @@ export * from './auth.js';
 export * from './capability.js';
 export * from './device.js';
 export * from './integration.js';
+export * from './realtime.js';
 export * from './errors.js';
 export * from './health.js';
