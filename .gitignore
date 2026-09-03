@@ -29,3 +29,4 @@ docs/reference/devices_dump.json
 # ── نظام التشغيل ──
 Thumbs.db
 .DS_Store
+*.tsbuildinfo
