@@ -1,6 +1,6 @@
 import { Type } from '@sinclair/typebox';
 import type { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox';
-import type { HealthResponse } from '@jisr/shared';
+import { HealthResponse } from '@jisr/shared';
 import type { Config } from '../config.ts';
 
 /**
@@ -17,12 +17,12 @@ export const healthRoutes: FastifyPluginAsyncTypebox<{ config: Config }> = async
         summary: 'فحص حياة السيرفر',
         tags: ['system'],
         response: {
-          200: Type.Ref('HealthResponse'),
+          200: Type.Ref(HealthResponse),
         },
       },
     },
-    async (): Promise<HealthResponse> => ({
-      status: 'ok',
+    async () => ({
+      status: 'ok' as const,
       version: opts.config.version,
       uptimeSeconds: Math.round((Date.now() - startedAt) / 1000),
       at: new Date().toISOString(),

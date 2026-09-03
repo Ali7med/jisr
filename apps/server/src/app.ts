@@ -4,6 +4,12 @@ import swagger from '@fastify/swagger';
 import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import {
   ApiError,
+  AuthSession,
+  AuthTokens,
+  LoginRequest,
+  RefreshRequest,
+  RegisterRequest,
+  UserProfile,
   Capability,
   CapabilityKind,
   CredentialField,
@@ -19,6 +25,10 @@ import {
 } from '@jisr/shared';
 import type { Config } from './config.ts';
 import { registerErrorHandlers } from './errors.ts';
+import { jwtPlugin } from './auth/jwt.ts';
+import { createAuthService } from './auth/service.ts';
+import type { Repositories } from './db/repositories.ts';
+import { authRoutes } from './routes/auth.ts';
 import { healthRoutes } from './routes/health.ts';
 
 /**
@@ -27,6 +37,12 @@ import { healthRoutes } from './routes/health.ts';
  */
 const SHARED_SCHEMAS = [
   ApiError,
+  RegisterRequest,
+  LoginRequest,
+  RefreshRequest,
+  UserProfile,
+  AuthTokens,
+  AuthSession,
   CapabilityKind,
   Capability,
   DeviceCategory,
@@ -41,7 +57,15 @@ const SHARED_SCHEMAS = [
   HealthResponse,
 ];
 
-export async function buildApp(config: Config): Promise<FastifyInstance> {
+export interface AppDependencies {
+  /** المستودعات تُمرَّر من الخارج: الاختبارات تستخدم نسخة في الذاكرة. */
+  readonly repositories: Repositories;
+}
+
+export async function buildApp(
+  config: Config,
+  deps: AppDependencies,
+): Promise<FastifyInstance> {
   const app = Fastify({
     // السجلّات لا تطبع أسراراً أبداً (الهيكلية § 7)
     logger: { level: config.logLevel },
@@ -66,6 +90,11 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
         version: config.version,
       },
       servers: [{ url: '/', description: 'السيرفر الحالي' }],
+      components: {
+        securitySchemes: {
+          bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
+        },
+      },
     },
     // أسماء المخططات في العقد هي `$id` نفسها — لا `def-0`؛ العقد يُقرأ
     // بشرياً وتُبنى عليه fixtures الهاتف الذهبية (ADR-0010)
@@ -77,7 +106,20 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
 
   registerErrorHandlers(app);
 
+  await app.register(jwtPlugin, {
+    secret: config.jwtSecret,
+    expiresInSeconds: config.accessTokenTtlSeconds,
+  });
+
+  const auth = createAuthService({
+    repositories: deps.repositories,
+    issuer: { sign: (payload) => app.jwt.sign(payload) },
+    accessTokenTtlSeconds: config.accessTokenTtlSeconds,
+    refreshTokenTtlDays: config.refreshTokenTtlDays,
+  });
+
   await app.register(healthRoutes, { config });
+  await app.register(authRoutes, { auth });
 
   return app;
 }

@@ -69,13 +69,16 @@ flutter run
 </div>
 
 ```bash
+cp apps/server/.env.example apps/server/.env
+docker compose -f docker-compose.dev.yml up -d
 pnpm install
+pnpm --filter @jisr/server db:migrate
 pnpm --filter @jisr/server dev
 ```
 
 <div dir="rtl">
 
-ثم `curl http://localhost:3000/health`. أوامر أخرى: `pnpm -r typecheck` · `pnpm -r test` · `pnpm openapi` (يعيد توليد عقد `packages/shared/openapi.json` — يُلتزَم به في git).
+املأ `JWT_SECRET` و`SECRETS_KEY_V1` في `.env` (`openssl rand -base64 32` لكلٍّ منهما) — السيرفر يرفض الإقلاع بدونهما. ثم `curl http://localhost:3000/health`. أوامر أخرى: `pnpm -r typecheck` · `pnpm -r test` · `pnpm openapi` (يعيد توليد عقد `packages/shared/openapi.json` — يُلتزَم به في git).
 
 </div>
 

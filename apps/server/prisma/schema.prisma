@@ -1,0 +1,128 @@
+// مخطّط قاعدة البيانات — ADR-0013 (PostgreSQL + Prisma)
+//
+// ثلاثة أحمال في قاعدة واحدة: علائقي صرف (مستخدمون · حسابات · أجهزة)،
+// أسرار مشفّرة AES-GCM (الهيكلية § 7)، وسلسلة زمنية (state_history).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// عنوان الاتصال يعيش في prisma.config.ts (Prisma 7)، والعميل يأخذ محوّلاً
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  displayName  String   @map("display_name")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  accounts      Account[]
+  refreshTokens RefreshToken[]
+
+  @@map("users")
+}
+
+/// رمز تجديد — يُخزَّن **مجزّأً** لا خاماً: تسريب القاعدة لا يمنح جلسات.
+model RefreshToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+enum AccountStatus {
+  active
+  invalid_credentials
+  expired
+  disabled
+
+  @@map("account_status")
+}
+
+/// حساب مربوط بتكامل. الأسرار مشفّرة AES-GCM بمفتاح خارج القاعدة،
+/// و`keyVersion` يسمح بتدوير المفتاح بلا توقّف (الهيكلية § 7).
+model Account {
+  id            String        @id @default(uuid()) @db.Uuid
+  userId        String        @map("user_id") @db.Uuid
+  integrationId String        @map("integration_id")
+  label         String
+  status        AccountStatus @default(active)
+
+  secretsCipher Bytes @map("secrets_cipher")
+  secretsIv     Bytes @map("secrets_iv")
+  secretsTag    Bytes @map("secrets_tag")
+  keyVersion    Int   @default(1) @map("key_version")
+
+  /// انتهاء اشتراك API لدى الشركة — عليه يعمل «حارس الصلاحية» (الدراسة § 7).
+  credentialsExpireAt DateTime? @map("credentials_expire_at")
+  lastCheckedAt       DateTime? @map("last_checked_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  devices Device[]
+
+  @@unique([userId, integrationId, label])
+  @@index([userId])
+  @@index([credentialsExpireAt])
+  @@map("accounts")
+}
+
+/// جهاز موحّد. `capabilities` تُخزَّن كما ترجمها التكامل — الواجهة لا
+/// تعرف الشركة، والقدرة غير المفهومة تُحفظ ولا تُخفى (القاعدة 3).
+model Device {
+  id            String  @id @default(uuid()) @db.Uuid
+  accountId     String  @map("account_id") @db.Uuid
+  integrationId String  @map("integration_id")
+  nativeId      String  @map("native_id")
+  name          String
+  category      String
+  online        Boolean @default(false)
+  model         String  @default("")
+  productName   String  @default("") @map("product_name")
+  iconUrl       String? @map("icon_url")
+  room          String?
+  isSubDevice   Boolean @default(false) @map("is_sub_device")
+  capabilities  Json    @default("[]")
+
+  lastSeenAt DateTime? @map("last_seen_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  account Account        @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  history StateHistory[]
+
+  @@unique([accountId, nativeId])
+  @@index([accountId])
+  @@map("devices")
+}
+
+/// السلسلة الزمنية. الفهرس `(device_id, recorded_at)` مقصود، والتقسيم
+/// الشهري وسياسة الاستبقاء يُفعَّلان عند الحاجة — ADR-0013.
+model StateHistory {
+  id         BigInt   @id @default(autoincrement())
+  deviceId   String   @map("device_id") @db.Uuid
+  key        String
+  /// القيمة العددية للرسوم؛ `rawValue` لما ليس عدداً.
+  value      Float?
+  rawValue   Json?    @map("raw_value")
+  recordedAt DateTime @default(now()) @map("recorded_at")
+
+  device Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@index([deviceId, recordedAt])
+  @@map("state_history")
+}

@@ -32,11 +32,13 @@
 
 ## P1 — السيرفر: الأساس (2–3 أسابيع)
 
-> **P1.1 أُنجز قبل T-V عمداً**: تهيئة مساحة العمل والعقد لا تعتمد على نتائج التحقق من Tuya — بخلاف P1.5 (نقل تكامل Tuya) الذي **يبقى محجوباً** حتى يُقفل معيار قبول T-V.
+> **P1.1–P1.3 أُنجزت قبل T-V عمداً**: مساحة العمل والعقد وطبقة البيانات والمصادقة لا تعتمد على نتائج التحقق من Tuya — بخلاف P1.5 (نقل تكامل Tuya) الذي **يبقى محجوباً** حتى يُقفل معيار قبول T-V.
+>
+> **متبقٍّ للتحقق:** تطبيق الهجرة على Postgres حيّ (`docker compose -f docker-compose.dev.yml up -d` ثم `pnpm --filter @jisr/server exec prisma migrate deploy`).
 
 - [x] **P1.1** `packages/shared` + `apps/server` (Fastify + TypeScript) + `/health` — *2026-09-02*: pnpm workspaces · Node 24 · مخططات TypeBox للعقد الموحّد · OpenAPI مولَّد ومُلتزَم به · حدّ طلبات عام · أخطاء عربية على عقد `ApiError` · CI بمسارات مفلترة
-- [ ] **P1.2** Auth: تسجيل/دخول · JWT + refresh · Argon2
-- [ ] **P1.3** Prisma: users · accounts (أسرار AES-GCM) · devices · state_history
+- [x] **P1.2** Auth: تسجيل/دخول · JWT + refresh · Argon2 — *2026-09-02*: Argon2id بمعاملات OWASP · تدوير إلزامي لرمز التجديد (المستعمل يُبطَل فوراً) · الرموز مُخزَّنة مجزّأة · ردّ موحّد لبريد مجهول وكلمة مرور خاطئة · سقف 10/دقيقة على `/auth`
+- [x] **P1.3** Prisma: users · accounts (أسرار AES-GCM) · devices · state_history — *2026-09-02*: Prisma 7 بمحوّل Postgres · هجرة أولى مولّدة · AES-256-GCM بمفاتيح مرقّمة تسمح بالتدوير · فهرس `(device_id, recorded_at)` ([ADR-0013](adr/0013-postgresql-prisma.md)). **الهجرة لم تُطبَّق على قاعدة حيّة بعد**
 - [ ] **P1.4** **نقل طبقة التكاملات لـ TypeScript**: `Integration` · `Capability` · `IntegrationRegistry`
 - [ ] **P1.5** **نقل تكامل Tuya**: signer (باختباراته) · client · mapper — مقابل `devices_dump.json` من V.2
 - [ ] **P1.6** REST: `/accounts` · `/devices` · `/devices/{id}` · `/commands` · `/history`

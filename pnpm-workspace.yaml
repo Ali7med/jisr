@@ -5,5 +5,7 @@ packages:
   - 'apps/web'
 
 # سكربتات البناء المسموح لها بالعمل — كل ما عداها يبقى محجوباً
-onlyBuiltDependencies:
-  - esbuild
+allowBuilds:
+  '@prisma/engines': true
+  esbuild: true
+  prisma: true
