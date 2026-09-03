@@ -88,6 +88,9 @@ export function createPrismaRepositories(prisma: PrismaClient): Repositories {
   };
 
   return {
+    async ping() {
+      await prisma.$queryRaw`SELECT 1`;
+    },
     users,
     refreshTokens,
     accounts: createAccountRepository(prisma),

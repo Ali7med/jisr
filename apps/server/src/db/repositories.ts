@@ -44,6 +44,8 @@ export interface RefreshTokenRepository {
 }
 
 export interface Repositories {
+  /** فحص جاهزية التخزين — يرمي إن تعذّر الوصول. يقرؤه `/health/ready`. */
+  ping(): Promise<void>;
   readonly users: UserRepository;
   readonly refreshTokens: RefreshTokenRepository;
   readonly accounts: AccountRepository;
