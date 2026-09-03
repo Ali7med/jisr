@@ -4,24 +4,25 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, type ReactNode } from 'react';
 import { useSession } from '../lib/session';
-import type { RealtimeStatus } from '../lib/realtime';
+import { useRealtime, type RealtimeStatus } from '../lib/realtime';
+import { NotificationBell } from './notification-bell';
 
 const TABS = [
   { href: '/devices', label: 'الأجهزة' },
+  { href: '/scenes', label: 'المشاهد' },
+  { href: '/automations', label: 'الأتمتة' },
   { href: '/accounts', label: 'الحسابات' },
 ];
 
 /** إطار الصفحات المحمية: يحرس الجلسة ويعرض حالة الاتصال صراحةً. */
-export function Chrome({
-  children,
-  status,
-}: {
-  children: ReactNode;
-  status?: RealtimeStatus;
-}) {
-  const { user, ready, signOut } = useSession();
+export function Chrome({ children }: { children: ReactNode }) {
+  const { user, ready, accessToken, signOut } = useSession();
   const router = useRouter();
   const pathname = usePathname();
+
+  // القناة مشتركة على مستوى التبويب، فاشتراك الإطار هنا لا يفتح وصلة
+  // ثانية فوق ما تشترك به الصفحة — ويجعل النقطة صادقة في كل صفحة.
+  const status = useRealtime(accessToken);
 
   useEffect(() => {
     if (ready && !user) router.replace('/login');
@@ -48,7 +49,8 @@ export function Chrome({
             {tab.label}
           </Link>
         ))}
-        {status && <LiveDot status={status} />}
+        <NotificationBell />
+        <LiveDot status={status} />
         <span className="muted">{user.displayName}</span>
         <button
           onClick={() => {

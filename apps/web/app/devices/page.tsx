@@ -5,11 +5,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { DEVICE_CATEGORY_LABELS_AR, type Device } from '@jisr/shared';
 import { ApiFailure } from '../../lib/api';
 import { useSession } from '../../lib/session';
-import { useRealtime } from '../../lib/realtime';
 import { Chrome } from '../../components/chrome';
 
 export default function DevicesPage() {
-  const { api, accessToken } = useSession();
+  const { api } = useSession();
   const [devices, setDevices] = useState<Device[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -30,13 +29,6 @@ export default function DevicesPage() {
     void load();
   }, [load]);
 
-  // القائمة تعرض الاتصال فقط، فحدث الحالة لا يغيّرها — لكنه إشارة حياة
-  // تستحق إعادة جلب خفيفة حين يعود الاتصال.
-  const status = useRealtime(
-    accessToken,
-    useCallback(() => undefined, []),
-  );
-
   const needle = query.trim().toLowerCase();
   const visible = needle
     ? devices.filter(
@@ -53,7 +45,7 @@ export default function DevicesPage() {
   }
 
   return (
-    <Chrome status={status}>
+    <Chrome>
       <h1>الأجهزة</h1>
 
       {error && <p className="notice">{error}</p>}

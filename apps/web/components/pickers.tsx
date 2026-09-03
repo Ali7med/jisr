@@ -233,9 +233,9 @@ export function TimezonePicker({
   onChange: (timezone: string) => void;
 }) {
   return (
-    <select id={id} value={value} onChange={(event) => onChange(event.target.value)}>
+    <select id={id} dir="ltr" value={value} onChange={(event) => onChange(event.target.value)}>
       {timezoneOptions(value).map((zone) => (
-        <option key={zone} value={zone} className="ltr">
+        <option key={zone} value={zone}>
           {zone}
         </option>
       ))}

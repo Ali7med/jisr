@@ -176,3 +176,161 @@ td {
   padding: 8px 6px;
   border-bottom: 1px solid var(--border);
 }
+
+/* ── بانِي الأتمتة والمشاهد ─────────────────────────────────────────── */
+
+/* أقسام «حين… / بشرط… / نفّذ…»: خطّ جانبي يجعلها تُقرأ جملةً متسلسلة */
+.step {
+  margin-block: 12px;
+  border-inline-start: 4px solid var(--primary);
+}
+
+.step-title {
+  font-size: 16px;
+  margin: 0 0 8px;
+}
+
+.stack {
+  display: grid;
+  gap: 12px;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.fields {
+  display: grid;
+  gap: 0 16px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.row-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-block: 10px;
+  background: var(--surface-2);
+}
+
+.row-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* معاينة الأتمتة: تُقرأ كجملة لا كحقول */
+.sentence {
+  background: var(--surface-2);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  line-height: 2;
+}
+
+.days {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.days button {
+  padding: 6px 12px;
+}
+
+.steps {
+  margin: 8px 0;
+  padding-inline-start: 22px;
+  color: var(--muted);
+}
+
+ul.notice {
+  padding-inline-start: 28px;
+}
+
+/* نتيجة تشغيل مشهد: النجاح الجزئي له لون خاص به، لا لون الفشل */
+.outcome {
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  margin-block: 10px;
+  background: color-mix(in srgb, var(--ok) 14%, transparent);
+}
+
+.outcome.partial {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.outcome p {
+  margin: 4px 0;
+}
+
+.outcome ul {
+  margin: 4px 0;
+  padding-inline-start: 22px;
+}
+
+/* ── جرس الإشعارات ──────────────────────────────────────────────────── */
+
+.bell-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.bell .badge {
+  display: inline-block;
+  margin-inline-start: 6px;
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--danger);
+  color: var(--surface);
+  font-size: 12px;
+  text-align: center;
+}
+
+/* حاجز شفّاف يغلق اللوحة بأي نقرة خارجها بلا مستمع على المستند */
+.panel-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+}
+
+.panel {
+  position: absolute;
+  z-index: 6;
+  inset-inline-start: 0;
+  top: calc(100% + 8px);
+  width: min(360px, 90vw);
+  max-height: 70vh;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  box-shadow: 0 12px 32px rgb(0 0 0 / 18%);
+}
+
+.notifications {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.notifications li {
+  border-top: 1px solid var(--border);
+  padding: 10px 0;
+}
+
+.notifications li p {
+  margin: 4px 0 0;
+}
+
+/* غير المقروء يُميَّز بعلامة لا بلون وحده — اللون وحده لا يصل لمن لا يميّزه */
+.notifications li.fresh {
+  border-inline-start: 3px solid var(--primary);
+  padding-inline-start: 8px;
+}

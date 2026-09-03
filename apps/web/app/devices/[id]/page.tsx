@@ -10,7 +10,7 @@ import {
 } from '@jisr/shared';
 import { ApiFailure } from '../../../lib/api';
 import { useSession } from '../../../lib/session';
-import { useRealtime } from '../../../lib/realtime';
+import { useRealtime, type StateEventPayload } from '../../../lib/realtime';
 import { Chrome } from '../../../components/chrome';
 import { Sparkline } from '../../../components/sparkline';
 
@@ -37,10 +37,10 @@ export default function DevicePage({ params }: { params: Promise<{ id: string }>
     void load();
   }, [load]);
 
-  const status = useRealtime(
+  useRealtime(
     accessToken,
     useCallback(
-      (event) => {
+      (event: StateEventPayload) => {
         if (event.deviceId !== deviceId) return;
         setSnapshot((current) =>
           current
@@ -91,7 +91,7 @@ export default function DevicePage({ params }: { params: Promise<{ id: string }>
   const charted = device?.capabilities.find((c) => c.key === chartKey);
 
   return (
-    <Chrome status={status}>
+    <Chrome>
       <h1>{device?.name ?? 'جارٍ التحميل…'}</h1>
       {device && (
         <p>
