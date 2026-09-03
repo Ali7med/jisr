@@ -5,6 +5,7 @@
  * يتحقّق Fastify من الطلبات، ومنه يُولَّد ملف OpenAPI الذي تُقاس عليه
  * اختبارات عقد الهاتف — [ADR-0010].
  */
+export * from './account.js';
 export * from './auth.js';
 export * from './capability.js';
 export * from './device.js';

@@ -3,6 +3,9 @@ import rateLimit from '@fastify/rate-limit';
 import swagger from '@fastify/swagger';
 import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import {
+  Account,
+  AccountList,
+  AccountStatus,
   ApiError,
   AuthSession,
   AuthTokens,
@@ -12,23 +15,41 @@ import {
   UserProfile,
   Capability,
   CapabilityKind,
+  CommandRequest,
+  CommandResult,
+  CreateAccountRequest,
+  Credentials,
   CredentialField,
   CredentialFieldType,
   CredentialOption,
   Command,
   Device,
   DeviceCategory,
+  DeviceList,
+  DeviceSnapshot,
   HealthResponse,
   HistoryPoint,
+  HistoryResponse,
+  HistorySource,
   IntegrationInfo,
+  IntegrationList,
   StateValue,
+  SyncResult,
+  UpdateAccountRequest,
 } from '@jisr/shared';
 import type { Config } from './config.ts';
 import { registerErrorHandlers } from './errors.ts';
 import { jwtPlugin } from './auth/jwt.ts';
 import { createAuthService } from './auth/service.ts';
+import { createSecretsCipher } from './db/crypto.ts';
 import type { Repositories } from './db/repositories.ts';
+import { createAccountsService } from './accounts/service.ts';
+import { createDevicesService } from './devices/service.ts';
+import { createIntegrationOpener } from './integrations/opener.ts';
+import { createIntegrationRegistry, type IntegrationRegistry } from './integrations/registry.ts';
+import { accountRoutes } from './routes/accounts.ts';
 import { authRoutes } from './routes/auth.ts';
+import { deviceRoutes } from './routes/devices.ts';
 import { healthRoutes } from './routes/health.ts';
 
 /**
@@ -54,12 +75,28 @@ const SHARED_SCHEMAS = [
   CredentialOption,
   CredentialField,
   IntegrationInfo,
+  IntegrationList,
+  AccountStatus,
+  Account,
+  Credentials,
+  CreateAccountRequest,
+  UpdateAccountRequest,
+  AccountList,
+  SyncResult,
+  DeviceList,
+  DeviceSnapshot,
+  CommandRequest,
+  CommandResult,
+  HistorySource,
+  HistoryResponse,
   HealthResponse,
 ];
 
 export interface AppDependencies {
   /** المستودعات تُمرَّر من الخارج: الاختبارات تستخدم نسخة في الذاكرة. */
   readonly repositories: Repositories;
+  /** سجلّ التكاملات يُحقن كذلك: الاختبارات تستبدله بتكامل وهمي بلا شبكة. */
+  readonly registry?: IntegrationRegistry;
 }
 
 export async function buildApp(
@@ -75,7 +112,7 @@ export async function buildApp(
     app.addSchema(schema);
   }
 
-  // حدّ عام على كل المسارات — سقف أشدّ على /auth يُضاف مع P1.2
+  // حدّ عام على كل المسارات — سقف أشدّ على /auth مضبوط على مستوى مساراته
   await app.register(rateLimit, {
     max: 300,
     timeWindow: '1 minute',
@@ -118,8 +155,21 @@ export async function buildApp(
     refreshTokenTtlDays: config.refreshTokenTtlDays,
   });
 
+  const registry = deps.registry ?? createIntegrationRegistry();
+  const cipher = createSecretsCipher(config.secretsKeys, config.secretsKeyVersion);
+  const opener = createIntegrationOpener(registry, cipher);
+  const accounts = createAccountsService({
+    repositories: deps.repositories,
+    registry,
+    opener,
+    cipher,
+  });
+  const devices = createDevicesService({ repositories: deps.repositories, registry, opener });
+
   await app.register(healthRoutes, { config });
   await app.register(authRoutes, { auth });
+  await app.register(accountRoutes, { accounts });
+  await app.register(deviceRoutes, { devices });
 
   return app;
 }

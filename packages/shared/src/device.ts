@@ -107,3 +107,60 @@ export const HistoryPoint = Type.Object(
   { $id: 'HistoryPoint', additionalProperties: false },
 );
 export type HistoryPoint = Static<typeof HistoryPoint>;
+
+/** قائمة الأجهزة — مغلّفة كي تحتمل ترقيماً لاحقاً بلا كسر العقد. */
+export const DeviceList = Type.Object(
+  { devices: Type.Array(Type.Ref(Device)) },
+  { $id: 'DeviceList', additionalProperties: false },
+);
+export type DeviceList = Static<typeof DeviceList>;
+
+/**
+ * لقطة جهاز: بياناته وقدراته وقيمه الحالية — ما تستهلكه شاشة التفاصيل
+ * في استدعاء واحد بدل ثلاثة.
+ */
+export const DeviceSnapshot = Type.Object(
+  {
+    device: Type.Ref(Device),
+    values: Type.Array(Type.Ref(StateValue)),
+    at: Type.String({ format: 'date-time' }),
+  },
+  { $id: 'DeviceSnapshot', additionalProperties: false },
+);
+export type DeviceSnapshot = Static<typeof DeviceSnapshot>;
+
+export const CommandRequest = Type.Object(
+  { commands: Type.Array(Type.Ref(Command), { minItems: 1 }) },
+  { $id: 'CommandRequest', additionalProperties: false },
+);
+export type CommandRequest = Static<typeof CommandRequest>;
+
+/**
+ * الأمر قُبل وأُرسل للشركة — لا يعني أن الجهاز نفّذه. التأكيد يأتي
+ * بتغيّر الحالة عبر WS في P2.2، وهذا ما يجعل التحكّم التفاؤلي صادقاً.
+ */
+export const CommandResult = Type.Object(
+  {
+    deviceId: Type.String({ minLength: 1 }),
+    accepted: Type.Boolean(),
+    at: Type.String({ format: 'date-time' }),
+  },
+  { $id: 'CommandResult', additionalProperties: false },
+);
+export type CommandResult = Static<typeof CommandResult>;
+
+/** مصدر السجلّ: قاعدتنا (ADR-0013) أو سحابة الشركة حين لا يزال سجلّنا فارغاً. */
+export const HistorySource = Type.Union([Type.Literal('server'), Type.Literal('integration')], {
+  $id: 'HistorySource',
+});
+export type HistorySource = Static<typeof HistorySource>;
+
+export const HistoryResponse = Type.Object(
+  {
+    deviceId: Type.String({ minLength: 1 }),
+    source: Type.Ref(HistorySource),
+    points: Type.Array(Type.Ref(HistoryPoint)),
+  },
+  { $id: 'HistoryResponse', additionalProperties: false },
+);
+export type HistoryResponse = Static<typeof HistoryResponse>;
