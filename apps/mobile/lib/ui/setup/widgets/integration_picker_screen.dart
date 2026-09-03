@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:jisr/data/integrations/integration_registry.dart';
+import 'package:jisr/config/dependencies.dart';
 import 'package:jisr/domain/models/integration_info.dart';
 import 'package:jisr/routing/app_router.dart';
 import 'package:jisr/ui/core/l10n/app_strings.dart';
+import 'package:jisr/ui/core/widgets/status_views.dart';
 
 /// قائمة الشركات المدعومة.
 ///
-/// تُبنى من [IntegrationRegistry] — إضافة شركة جديدة تظهر هنا تلقائياً.
+/// **تُبنى ممّا يرسله السيرفر** — شركة جديدة تظهر هنا بلا تحديث للتطبيق
+/// (القاعدة الحاكمة 7).
 class IntegrationPickerScreen extends ConsumerWidget {
   const IntegrationPickerScreen({super.key, this.isFirstRun = false});
 
@@ -17,42 +19,57 @@ class IntegrationPickerScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final integrations = IntegrationRegistry.available;
+    final integrations = ref.watch(integrationsProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: Text(isFirstRun ? S.appName : S.chooseIntegration),
         automaticallyImplyLeading: !isFirstRun,
       ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-        children: [
-          if (isFirstRun) ...[
-            const SizedBox(height: 8),
-            Text(
-              S.appTagline,
-              style: theme.textTheme.titleLarge,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              S.noAccountsHint,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.outline,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-          ],
-          for (final info in integrations) ...[
-            _IntegrationCard(
-              info: info,
-              onTap: () => AppRoutes.toAccountForm(context, info: info),
-            ),
-            const SizedBox(height: 12),
-          ],
-        ],
+      body: integrations.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, _) => ErrorStateView(
+          message: '$error',
+          onRetry: () => ref.invalidate(integrationsProvider),
+        ),
+        data: (list) => _list(context, theme, list),
       ),
+    );
+  }
+
+  Widget _list(
+    BuildContext context,
+    ThemeData theme,
+    List<IntegrationInfo> integrations,
+  ) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+      children: [
+        if (isFirstRun) ...[
+          const SizedBox(height: 8),
+          Text(
+            S.appTagline,
+            style: theme.textTheme.titleLarge,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            S.noAccountsHint,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.outline,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+        ],
+        for (final info in integrations) ...[
+          _IntegrationCard(
+            info: info,
+            onTap: () => AppRoutes.toAccountForm(context, info: info),
+          ),
+          const SizedBox(height: 12),
+        ],
+      ],
     );
   }
 }

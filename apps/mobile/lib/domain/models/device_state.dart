@@ -5,6 +5,9 @@ class StateValue {
   final String key;
   final Object? value;
 
+  factory StateValue.fromJson(Map<String, dynamic> json) =>
+      StateValue(key: json['key'] as String? ?? '', value: json['value']);
+
   @override
   String toString() => 'StateValue($key = $value)';
 }
@@ -34,6 +37,15 @@ class HistoryPoint {
   final double value;
 
   final DateTime at;
+
+  /// السيرفر يرسل الوقت بصيغة ISO-8601 بتوقيت UTC؛ نعرضه محلياً.
+  factory HistoryPoint.fromJson(Map<String, dynamic> json) => HistoryPoint(
+    key: json['key'] as String? ?? '',
+    value: (json['value'] as num?)?.toDouble() ?? 0,
+    at:
+        DateTime.tryParse(json['at'] as String? ?? '')?.toLocal() ??
+        DateTime.now(),
+  );
 
   @override
   String toString() => 'HistoryPoint($key = $value @ $at)';

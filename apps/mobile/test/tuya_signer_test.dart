@@ -100,25 +100,25 @@ void main() {
 
     test('تغيّر الطابع الزمني يغيّر التوقيع', () {
       String signAt(int t) => TuyaSigner.sign(
-        clientId: clientId,
-        secret: secret,
-        timestampMs: t,
-        method: 'GET',
-        path: '/v1.0/token',
-      );
+            clientId: clientId,
+            secret: secret,
+            timestampMs: t,
+            method: 'GET',
+            path: '/v1.0/token',
+          );
 
       expect(signAt(timestamp), isNot(signAt(timestamp + 1)));
     });
 
     test('ترتيب إدخال المعاملات لا يؤثّر على التوقيع', () {
       String signWith(Map<String, String> query) => TuyaSigner.sign(
-        clientId: clientId,
-        secret: secret,
-        timestampMs: timestamp,
-        method: 'GET',
-        path: '/v1.0/devices/x/logs',
-        query: query,
-      );
+            clientId: clientId,
+            secret: secret,
+            timestampMs: timestamp,
+            method: 'GET',
+            path: '/v1.0/devices/x/logs',
+            query: query,
+          );
 
       expect(signWith({'a': '1', 'b': '2'}), signWith({'b': '2', 'a': '1'}));
     });
@@ -157,13 +157,13 @@ void main() {
 
     test('nonce غير الفارغ يُرسَل ويغيّر التوقيع', () {
       Map<String, String> build(String nonce) => TuyaSigner.headers(
-        clientId: clientId,
-        secret: secret,
-        timestampMs: timestamp,
-        method: 'GET',
-        path: '/v1.0/token',
-        nonce: nonce,
-      );
+            clientId: clientId,
+            secret: secret,
+            timestampMs: timestamp,
+            method: 'GET',
+            path: '/v1.0/token',
+            nonce: nonce,
+          );
 
       final without = build('');
       final with_ = build('abc');

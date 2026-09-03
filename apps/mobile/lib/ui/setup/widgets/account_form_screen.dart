@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:jisr/config/dependencies.dart';
-import 'package:jisr/data/integrations/integration_registry.dart';
-import 'package:jisr/data/repositories/accounts_repository.dart';
-import 'package:jisr/domain/integration_exception.dart';
+import 'package:jisr/data/api/api_exception.dart';
 import 'package:jisr/domain/models/account.dart';
 import 'package:jisr/domain/models/integration_info.dart';
 import 'package:jisr/ui/core/l10n/app_strings.dart';
 import 'package:jisr/ui/core/widgets/status_views.dart';
+import 'package:jisr/ui/devices/view_models/devices_view_model.dart';
 
-/// نموذج ربط حساب — **يُبنى بالكامل من [IntegrationInfo.fields]**.
+/// نموذج ربط حساب — **يُبنى بالكامل من [IntegrationInfo.fields]** التي
+/// يرسلها السيرفر.
 ///
 /// لا يوجد أي حقل مكتوب يدوياً لأي شركة. إضافة شركة جديدة تعطيها هذه
 /// الشاشة مجاناً، مهما اختلفت حقول اعتمادها.
+///
+/// **الاعتمادات تُرسل مرة واحدة ولا تُحفظ على الجهاز** ([ADR-0009]):
+/// السيرفر يتحقّق منها لدى الشركة ثم يخزّنها مشفّرة.
 class AccountFormScreen extends ConsumerStatefulWidget {
   const AccountFormScreen({super.key, required this.info, this.existing});
 
@@ -44,7 +47,8 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
     _label = TextEditingController(text: existing?.label ?? widget.info.nameAr);
 
     for (final field in widget.info.fields) {
-      final value = existing?[field.key] ?? field.defaultValue ?? '';
+      // حساب موجود لا يعيد لنا أسراره أبداً — الحقول تبدأ فارغة عند التعديل.
+      final value = field.defaultValue ?? '';
       if (field.type == CredentialFieldType.choice) {
         _choices[field.key] = value;
       } else {
@@ -71,46 +75,50 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
       _error = null;
     });
 
-    final account = Account(
-      id: widget.existing?.id ?? AccountsRepository.newId(widget.info.id),
-      integrationId: widget.info.id,
-      label: _label.text.trim().isEmpty
-          ? widget.info.nameAr
-          : _label.text.trim(),
-      credentials: {
-        for (final entry in _controllers.entries)
-          entry.key: entry.value.text.trim(),
-        for (final entry in _choices.entries) entry.key: entry.value,
-      },
-    );
-
-    // نختبر بتكامل مؤقت ونتخلّص منه؛ التكامل الدائم يبنيه الـ provider.
-    final probe = IntegrationRegistry.create(account);
-    if (probe == null) {
-      setState(() {
-        _busy = false;
-        _error = 'هذا التكامل غير متاح في هذه النسخة.';
-      });
-      return;
-    }
+    final label = _label.text.trim().isEmpty
+        ? widget.info.nameAr
+        : _label.text.trim();
+    final credentials = {
+      for (final entry in _controllers.entries)
+        entry.key: entry.value.text.trim(),
+      for (final entry in _choices.entries) entry.key: entry.value,
+    };
 
     try {
-      await probe.verify();
+      final api = ref.read(apiClientProvider);
+      final existing = widget.existing;
+
+      // السيرفر يتحقّق من الاعتمادات لدى الشركة **قبل** الحفظ، فنجاح
+      // الطلب يعني أن الحساب يعمل فعلاً لا أنه حُفظ فقط.
+      if (existing == null) {
+        await api.createAccount(
+          integrationId: widget.info.id,
+          label: label,
+          credentials: credentials,
+        );
+      } else {
+        await api.updateAccount(
+          existing.id,
+          label: label,
+          credentials: credentials,
+        );
+      }
       if (!mounted) return;
 
-      await ref.read(accountsProvider.notifier).save(account);
+      await ref.read(accountsProvider.notifier).reload();
+      ref.invalidate(devicesProvider);
       if (!mounted) return;
 
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text(S.connectionOk)));
       Navigator.of(context).popUntil((route) => route.isFirst);
-    } on IntegrationException catch (error) {
+    } on ApiException catch (error) {
+      // الرسالة عربية وكتبها السيرفر (أو التكامل) — نعرضها كما هي.
       if (mounted) setState(() => _error = error.message);
     } catch (error) {
       if (mounted) setState(() => _error = '$error');
     } finally {
-      probe.dispose();
       if (mounted) setState(() => _busy = false);
     }
   }
@@ -156,7 +164,6 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
                 ),
               ],
               const SizedBox(height: 24),
-
               TextFormField(
                 controller: _label,
                 enabled: !_busy,
@@ -167,17 +174,14 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-
               for (final field in info.fields) ...[
                 _buildField(field),
                 const SizedBox(height: 16),
               ],
-
               if (_error != null) ...[
                 const SizedBox(height: 4),
                 NoticeBanner(message: _error!, margin: EdgeInsets.zero),
               ],
-
               const SizedBox(height: 24),
               FilledButton.icon(
                 onPressed: _busy ? null : _submit,

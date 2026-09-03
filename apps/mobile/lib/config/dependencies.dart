@@ -1,87 +1,118 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:jisr/data/integrations/integration_registry.dart';
-import 'package:jisr/data/repositories/accounts_repository.dart';
+import 'package:jisr/data/api/jisr_api_client.dart';
+import 'package:jisr/data/api/realtime_client.dart';
+import 'package:jisr/data/api/session_store.dart';
 import 'package:jisr/data/repositories/device_repository.dart';
-import 'package:jisr/domain/integration.dart';
 import 'package:jisr/domain/models/account.dart';
+import 'package:jisr/domain/models/integration_info.dart';
 
 /// حقن الاعتماديات لكامل التطبيق.
 ///
-/// شجرة التبعية:
+/// شجرة التبعية بعد [ADR-0009]:
 /// ```
-/// accountsProvider → integrationsProvider → deviceRepositoryProvider
+/// sessionProvider → apiClientProvider → deviceRepositoryProvider
+///                                    → realtimeProvider
 /// ```
-/// تغيير الحسابات يعيد بناء السلسلة كلها ويُغلق التكاملات القديمة.
+/// تسجيل الدخول أو الخروج يعيد بناء السلسلة كلها.
 
-// ── الحسابات ─────────────────────────────────────────────────────────────────
+final apiClientProvider = Provider<JisrApiClient>((ref) => JisrApiClient());
 
-final accountsRepositoryProvider = Provider<AccountsRepository>(
-  (ref) => AccountsRepository(),
+/// الجلسة الحالية. `null` تعني أن على المستخدم تسجيل الدخول.
+final sessionProvider = AsyncNotifierProvider<SessionNotifier, Session?>(
+  SessionNotifier.new,
 );
 
-/// الحسابات المرتبطة. قائمة فارغة تعني أن التطبيق لم يُعدّ بعد.
+class SessionNotifier extends AsyncNotifier<Session?> {
+  @override
+  Future<Session?> build() => ref.read(apiClientProvider).restore();
+
+  Future<void> login({required String email, required String password}) async {
+    final session = await ref
+        .read(apiClientProvider)
+        .login(email: email, password: password);
+    state = AsyncData(session);
+  }
+
+  Future<void> register({
+    required String email,
+    required String password,
+    required String displayName,
+  }) async {
+    final session = await ref
+        .read(apiClientProvider)
+        .register(email: email, password: password, displayName: displayName);
+    state = AsyncData(session);
+  }
+
+  /// الخروج يمسح الجلسة **والكاش**: بيانات مستخدم سابق لا تظهر لغيره.
+  Future<void> logout() async {
+    await ref.read(deviceRepositoryProvider).clear();
+    await ref.read(apiClientProvider).logout();
+    state = const AsyncData(null);
+  }
+}
+
+final deviceRepositoryProvider = Provider<DeviceRepository>(
+  (ref) => DeviceRepository(ref.watch(apiClientProvider)),
+);
+
+// ── القناة اللحظية ───────────────────────────────────────────────────────────
+
+/// عميل القناة — يبدأ مع الجلسة ويتوقّف بانتهائها.
+final realtimeProvider = Provider<RealtimeClient>((ref) {
+  final client = RealtimeClient();
+  ref.onDispose(client.dispose);
+
+  final session = ref.watch(sessionProvider).value;
+  if (session != null) {
+    client.start(session.accessToken);
+  } else {
+    client.stop();
+  }
+  return client;
+});
+
+/// حالة الاتصال — تعرضها الواجهة صراحةً بدل أن توهم المستخدم بحياة الشاشة.
+final connectionStatusProvider = StreamProvider<RealtimeStatus>((ref) {
+  final client = ref.watch(realtimeProvider);
+  return client.status;
+});
+
+/// تحديثات الحالة الواردة — تستهلكها نماذج العرض بدل الاستقصاء الدوري.
+final stateUpdatesProvider = StreamProvider<DeviceStateUpdate>((ref) {
+  return ref.watch(realtimeProvider).updates;
+});
+
+// ── الحسابات والتكاملات ──────────────────────────────────────────────────────
+
+/// الشركات المدعومة **كما يصفها السيرفر** — شركة جديدة تظهر بلا تحديث
+/// للتطبيق (القاعدة الحاكمة 7).
+final integrationsProvider = FutureProvider<List<IntegrationInfo>>(
+  (ref) => ref.watch(apiClientProvider).fetchIntegrations(),
+);
+
 final accountsProvider = AsyncNotifierProvider<AccountsNotifier, List<Account>>(
   AccountsNotifier.new,
 );
 
 class AccountsNotifier extends AsyncNotifier<List<Account>> {
   @override
-  Future<List<Account>> build() => ref.read(accountsRepositoryProvider).load();
+  Future<List<Account>> build() async {
+    if (ref.watch(sessionProvider).value == null) return const [];
+    return ref.read(apiClientProvider).fetchAccounts();
+  }
 
-  /// يضيف حساباً جديداً أو يحدّث الموجود.
-  Future<void> save(Account account) async {
-    final accounts = await ref.read(accountsRepositoryProvider).upsert(account);
-    state = AsyncData(accounts);
+  Future<void> reload() async {
+    state = await AsyncValue.guard(ref.read(apiClientProvider).fetchAccounts);
   }
 
   Future<void> remove(String accountId) async {
-    final accounts = await ref
-        .read(accountsRepositoryProvider)
-        .remove(accountId);
-    state = AsyncData(accounts);
+    await ref.read(apiClientProvider).deleteAccount(accountId);
+    await reload();
   }
 
-  Future<void> clear() async {
-    await ref.read(accountsRepositoryProvider).clear();
-    state = const AsyncData([]);
+  Future<void> sync(String accountId) async {
+    await ref.read(apiClientProvider).syncAccount(accountId);
+    await reload();
   }
 }
-
-// ── التكاملات ────────────────────────────────────────────────────────────────
-
-/// التكاملات النشطة، واحد لكل حساب مرتبط.
-///
-/// حساب يشير إلى تكامل غير معروف يُتجاهَل بدل إسقاط التطبيق.
-final integrationsProvider = Provider<List<Integration>>((ref) {
-  final accounts = ref.watch(accountsProvider).value ?? const <Account>[];
-
-  final integrations = <Integration>[];
-  for (final account in accounts) {
-    try {
-      final integration = IntegrationRegistry.create(account);
-      if (integration != null) integrations.add(integration);
-    } catch (_) {
-      // اعتمادات ناقصة أو تالفة: نتخطّى الحساب ونُبقي البقية تعمل.
-    }
-  }
-
-  ref.onDispose(() {
-    for (final integration in integrations) {
-      integration.dispose();
-    }
-  });
-
-  return integrations;
-});
-
-final deviceRepositoryProvider = Provider<DeviceRepository>((ref) {
-  final repository = DeviceRepository(ref.watch(integrationsProvider));
-  ref.onDispose(repository.clearCache);
-  return repository;
-});
-
-// ── حالة على مستوى التطبيق ───────────────────────────────────────────────────
-
-/// هل التطبيق في المقدّمة؟ نوقف التحديث الدوري في الخلفية توفيراً
-/// لحصة الـ API وللبطارية.
-final appActiveProvider = StateProvider<bool>((ref) => true);

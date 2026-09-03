@@ -4,18 +4,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:jisr/config/app_config.dart';
 import 'package:jisr/config/dependencies.dart';
 import 'package:jisr/domain/models/device_snapshot.dart';
+import 'package:jisr/domain/models/device_state.dart';
 
 final deviceDetailProvider =
     AsyncNotifierProvider.family<DeviceDetailViewModel, DeviceSnapshot, String>(
       DeviceDetailViewModel.new,
     );
 
-/// تفاصيل جهاز واحد، مع تحديث دوري وتحكّم تفاؤلي.
+/// تفاصيل جهاز واحد: لقطة أولى من السيرفر، ثم **تحديثات لحظية**.
+///
+/// لا استقصاء دوري بعد P3.5.
 class DeviceDetailViewModel
     extends FamilyAsyncNotifier<DeviceSnapshot, String> {
-  Timer? _timer;
-
-  /// قدرات لها أمر قيد التنفيذ — نتجاهل قراءات الخادم عنها مؤقتاً حتى
+  /// قدرات لها أمر قيد التنفيذ — نتجاهل قراءات السيرفر عنها مؤقتاً حتى
   /// لا يقفز المفتاح ذهاباً وإياباً قبل أن يلحق الجهاز بالأمر.
   final Set<String> _pending = {};
 
@@ -23,22 +24,17 @@ class DeviceDetailViewModel
 
   @override
   Future<DeviceSnapshot> build(String deviceId) async {
-    final repository = ref.watch(deviceRepositoryProvider);
+    ref.listen(stateUpdatesProvider, (_, next) {
+      final update = next.value;
+      if (update != null && update.deviceId == deviceId) _apply(update.values);
+    });
 
-    ref.onDispose(() => _timer?.cancel());
-    _schedulePolling();
-
-    final device = await repository.findDevice(deviceId);
-    return repository.fetchSnapshot(device);
+    return ref.read(deviceRepositoryProvider).fetchSnapshot(deviceId);
   }
 
   Future<void> refresh() async {
-    final repository = ref.read(deviceRepositoryProvider);
-    final current = state.value;
-    if (current == null) return;
-
     state = await AsyncValue.guard(
-      () => repository.fetchSnapshot(current.device),
+      () => ref.read(deviceRepositoryProvider).fetchSnapshot(deviceId),
     );
   }
 
@@ -46,7 +42,6 @@ class DeviceDetailViewModel
   ///
   /// يعيد رمي الاستثناء بعد التراجع ليعرض المستدعي رسالة.
   Future<void> sendCommand(String key, Object? value) async {
-    final repository = ref.read(deviceRepositoryProvider);
     final snapshot = state.value;
     if (snapshot == null) return;
 
@@ -55,7 +50,9 @@ class DeviceDetailViewModel
     state = AsyncData(snapshot.withValue(key, value));
 
     try {
-      await repository.sendCommand(snapshot.device, key, value);
+      await ref
+          .read(deviceRepositoryProvider)
+          .sendCommand(deviceId, key, value);
       await Future<void>.delayed(AppTuning.commandSettleDelay);
       await _refreshSilently();
     } catch (_) {
@@ -69,13 +66,31 @@ class DeviceDetailViewModel
     }
   }
 
+  /// تحديث وارد من القناة: يدمج القيم ويُسقط صفة «قديمة» عن اللقطة.
+  ///
+  /// القدرات التي لها أمر قيد التنفيذ تُستثنى: قيمتنا التفاؤلية أحدث من
+  /// قراءة وصلت قبل أن يلحق الجهاز بالأمر.
+  void _apply(List<StateValue> values) {
+    final current = state.value;
+    if (current == null) return;
+
+    final incoming = [
+      for (final value in values)
+        if (!_pending.contains(value.key)) value,
+    ];
+    if (incoming.isEmpty) return;
+
+    state = AsyncData(current.merged(incoming));
+  }
+
   Future<void> _refreshSilently() async {
-    final repository = ref.read(deviceRepositoryProvider);
     final current = state.value;
     if (current == null) return;
 
     try {
-      final fresh = await repository.fetchSnapshot(current.device);
+      final fresh = await ref
+          .read(deviceRepositoryProvider)
+          .fetchSnapshot(deviceId);
       final latest = state.value;
       if (latest == null) return;
 
@@ -88,13 +103,5 @@ class DeviceDetailViewModel
     } catch (_) {
       // انقطاع عابر: نُبقي آخر لقطة معروضة.
     }
-  }
-
-  void _schedulePolling() {
-    _timer?.cancel();
-    _timer = Timer.periodic(AppTuning.detailPollInterval, (_) {
-      if (!ref.read(appActiveProvider)) return;
-      unawaited(_refreshSilently());
-    });
   }
 }

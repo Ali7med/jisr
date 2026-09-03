@@ -34,9 +34,10 @@ jisr/
 
 | | |
 |---|---|
-| تطبيق الهاتف (يتصل بـ Tuya مباشرة حالياً) | ✅ يعمل · `analyze` نظيف · 12 اختباراً · APK يُبنى |
-| **التحقق مقابل Tuya حقيقي** | 🔴 **الخطوة التالية** — [T-V](docs/03-roadmap.md) |
-| السيرفر | 🟢 الأساس قائم: Fastify + عقد OpenAPI + `/health` ([P1.1](docs/03-roadmap.md)) |
+| تطبيق الهاتف — **عميل رفيع** يتصل بالسيرفر وحده | ✅ `analyze` نظيف · 23 اختباراً · APK يُبنى |
+| **التحقق مقابل Tuya حقيقي** | 🔴 **الخطوة التالية** — [T-V](docs/03-roadmap.md) · تحتاج مفاتيحك وجهازك |
+| السيرفر | 🟢 مصادقة · حسابات · أجهزة · أوامر · سجلّ · قناة لحظية — ١١٢ اختباراً ([P1](docs/03-roadmap.md) · P2.2 · P2.3) |
+| النشر | 🟡 التركيبة جاهزة ([دليل التشغيل](docs/runbook.md))، ولم تُنشر على خادم بعد |
 | الويب | ⏳ حسب [خارطة الطريق](docs/03-roadmap.md) |
 
 ## اقرأ أولاً
@@ -58,7 +59,7 @@ jisr/
 cd apps/mobile
 flutter pub get
 flutter analyze && flutter test
-flutter run
+flutter run --dart-define=JISR_SERVER_URL=http://10.0.2.2:3000
 ```
 
 <div dir="rtl">

@@ -24,8 +24,7 @@ Future<void> main(List<String> args) async {
   final accessId = options['id'] ?? Platform.environment['TUYA_ID'];
   final secret = options['secret'] ?? Platform.environment['TUYA_SECRET'];
   final uid = options['uid'] ?? Platform.environment['TUYA_UID'];
-  final host =
-      options['host'] ??
+  final host = options['host'] ??
       Platform.environment['TUYA_HOST'] ??
       'openapi.tuyaeu.com';
 
@@ -157,9 +156,8 @@ class _Probe {
           final code = item['code'];
           final type = item['type'];
           final values = '${item['values'] ?? ''}';
-          final trimmed = values.length > 70
-              ? '${values.substring(0, 70)}…'
-              : values;
+          final trimmed =
+              values.length > 70 ? '${values.substring(0, 70)}…' : values;
           stdout.writeln('    - $code ($type) $trimmed');
         }
       }
